@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 resolution-markers = [
     "python_full_version >= '3.13' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
@@ -691,7 +691,7 @@ resolution-markers = [
     "python_full_version < '3.12' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
 ]
 dependencies = [
-    { name = "cffi", marker = "platform_machine == 'x86_64' and platform_python_implementation != 'PyPy' and sys_platform == 'darwin'" },
+    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/12/45/870e7f4bef50e5f53b9f51d4428aee5290eedf58ba443f16b1ebb7ab8e66/cryptography-48.0.1.tar.gz", hash = "sha256:266f4ee051abb2f725b74ef8072b521ce1feacf685a3364fa6a6b45548db791a", size = 832989, upload-time = "2026-06-09T22:32:31.8Z" }
 wheels = [
@@ -713,7 +713,7 @@ resolution-markers = [
     "(python_full_version < '3.12' and platform_machine != 'x86_64' and sys_platform == 'darwin') or (python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'linux')",
 ]
 dependencies = [
-    { name = "cffi", marker = "(platform_machine != 'x86_64' and platform_python_implementation != 'PyPy') or (platform_python_implementation != 'PyPy' and sys_platform != 'darwin')" },
+    { name = "cffi", marker = "platform_python_implementation != 'PyPy'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/9d/af/182eb91b0df3fe75c4d9f26fe70684569566745f6ba7e5c9c73a862c5252/cryptography-50.0.2.tar.gz", hash = "sha256:7b46165bb56eb4704e2eaaf86f3c940d19154535d9b0ca7d6d590b04060e00d5", size = 880623, upload-time = "2026-09-30T15:30:04.884Z" }
 wheels = [
@@ -1748,7 +1748,7 @@ resolution-markers = [
     "(python_full_version < '3.12' and platform_machine != 'x86_64' and sys_platform == 'darwin') or (python_full_version < '3.12' and sys_platform != 'darwin' and sys_platform != 'linux')",
 ]
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version < '3.12'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/8b/04/e7c1fe4dc78a6fdbfd6c337b1c3732ff543b8a397683ab38378447baa331/pyee-13.0.1.tar.gz", hash = "sha256:0b931f7c14535667ed4c7e0d531716368715e860b988770fc7eb8578d1f67fc8", size = 31655, upload-time = "2026-02-14T21:12:28.044Z" }
 wheels = [
@@ -1768,7 +1768,7 @@ resolution-markers = [
     "(python_full_version == '3.12.*' and platform_machine != 'x86_64' and sys_platform == 'darwin') or (python_full_version == '3.12.*' and sys_platform != 'darwin' and sys_platform != 'linux')",
 ]
 dependencies = [
-    { name = "typing-extensions", marker = "python_full_version >= '3.12'" },
+    { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/1d/f1/fdedc2c75c3e31a330659c85e5793bb18b3397981fbf0844c6dee5b18926/pyee-14.0.0.tar.gz", hash = "sha256:76dd0f4314ecd27f02dc73589dea7fd3853f9b6176d8ef9b122860657e3602de", size = 98760, upload-time = "2026-08-13T04:26:11.021Z" }
 wheels = [
@@ -1881,16 +1881,16 @@ wheels = [
 
 [[package]]
 name = "samsungtvws"
-version = "3.0.6"
+version = "3.0.7"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "requests" },
     { name = "websocket-client" },
     { name = "yarl" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/35/10/83c2d17e8643c262acc8b9e24581a44699862bb6c0ef0683b4bf682ee53a/samsungtvws-3.0.6.tar.gz", hash = "sha256:166111d8370443cd2021b74cdfac9495896dfc41e3a87ea023289f24f922bb91", size = 48757, upload-time = "2026-09-11T22:41:04.031Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b3/f6/cfe421b69e7ff9c1d4a5ae2f2ee24567581d696ebcdc27e7c6233bfdff6d/samsungtvws-3.0.7.tar.gz", hash = "sha256:979a61f64221f7ddf8cb3b254a41cabfc6eae1331182aaee941948b3b7d0b918", size = 54259, upload-time = "2026-11-02T15:47:38.592Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/76/49/60b2993a26e78f5d2716b4df1c3fb8fae54d19acf79197280df9088ddc15/samsungtvws-3.0.6-py3-none-any.whl", hash = "sha256:6e3a1b23f928b3035570cc976b64b8c2a218b06022a333855fd7cd02dc74891d", size = 48791, upload-time = "2026-09-11T22:41:02.375Z" },
+    { url = "https://files.pythonhosted.org/packages/a1/86/f83163083acb7c47cc225d37f942f2ae51c460304d350a9fec64ba167fec/samsungtvws-3.0.7-py3-none-any.whl", hash = "sha256:3ab372cdd8fae8f097e9b580d28a653bbd42b8de9b6d32ccf55b8eaf86531001", size = 51682, upload-time = "2026-11-02T15:47:37.355Z" },
 ]
 
 [[package]]
