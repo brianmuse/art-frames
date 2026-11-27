@@ -1,0 +1,141 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header, settings_card, card_notes, card_form, unsaved_tag, advanced_row, preset_group with context %}
+{# A setting's help: the first sentence, and the rest under "Learn more". #}
+{% macro help(text) %}{% if text %}{% set first, rest = help_parts(text) %}<div class="small field-help"><span>{{ first }}</span>{% if rest %} <details class="learn-more"><summary>Learn more</summary><p>{{ rest }}</p></details>{% endif %}</div>{% endif %}{% endmacro %}
+{% macro input_field(field, name, value, saved=false) %}
+{% if field.type == 'checkbox' %}<label class="check"><input type="checkbox" class="switch" name="{{ name }}" {% if value %}checked{% endif %}> {{ field.label }}</label>
+{% elif field.type == 'secret' %}
+<div class="secret-field">
+  <p class="field-label">{{ field.label }}</p>
+  {% if saved %}
+  <p class="secret-state"><span class="badge secondary">{{ icon('check') }}Saved</span><span class="small">Art Frames keeps it private and never shows it again.</span></p>
+  <div class="secret-actions">
+    <details class="secret-replace"><summary class="button outline sm">Replace</summary>
+      <label>New {{ setting_words(field.label) }}<input type="password" name="{{ name }}" value="" autocomplete="new-password" maxlength="4096"></label>
+    </details>
+    <details class="confirm-delete secret-remove" data-confirm><summary class="button ghost sm">Remove<span class="sr-only"> the saved {{ setting_words(field.label) }}</span></summary><span class="confirm-row"><span class="confirm-text">Remove the saved {{ setting_words(field.label) }}?{% if not name.startswith('list.') %} {{ manifest.name }} stops until you add it again.{% endif %}</span><button class="button outline sm" type="button" data-confirm-cancel>Cancel</button><button class="button destructive sm" type="submit" name="clear_{{ name }}" value="on">Remove</button></span></details>
+  </div>
+  {% else %}<label class="sr-only" for="field-{{ name }}">{{ field.label }}</label><input id="field-{{ name }}" type="password" name="{{ name }}" value="" autocomplete="new-password" maxlength="4096" placeholder="Paste your {{ setting_words(field.label) }}">{% endif %}
+</div>
+{% else %}<label>{{ field.label }}
+{% if field.type == 'choice' %}<select name="{{ name }}">{% for choice in field.choices %}<option value="{{ choice }}" {% if value == choice %}selected{% endif %}>{{ choice_label(choice) }}</option>{% endfor %}</select>
+{% else %}<input type="{{ field.type if field.type in ['time', 'color'] else 'text' }}" name="{{ name }}" value="{{ value }}" maxlength="4096">{% endif %}
+</label>{% endif %}
+{{ help(field.description) }}
+{% endmacro %}
+{% macro list_item(field, row) %}
+<fieldset class="app-list-item stack" data-list-item>
+<legend>{{ field.item_label }}</legend>
+<input type="hidden" name="list.{{ field.key }}.rows" value="{{ row.id }}">
+{% for child in field.fields %}{% set name = 'list.' ~ field.key ~ '.' ~ row.id ~ '.' ~ child.key %}
+{{ input_field(child, name, row.get(child.key, child.default), name in configured) }}
+{% endfor %}
+<button type="button" class="button outline" data-list-remove>Remove {{ field.item_label | lower }}</button>
+</fieldset>
+{% endmacro %}
+{# One layout setting: a list of items, or one field. #}
+{% macro setting(field) %}
+{% if field.type == 'list' %}
+<section class="app-list stack" data-app-list data-key="{{ field.key }}" data-max="{{ field.max_items }}" data-item-label="{{ field.item_label }}">
+<h3>{{ field.label }}</h3>{{ help(field.description) }}
+<div class="stack" data-list-rows>{% for row in values.get(field.key, []) %}{{ list_item(field, row) }}{% endfor %}</div>
+<template data-list-template>{{ list_item(field, {'id': '__ROW__'}) }}</template>
+<p class="small" data-list-status role="status"></p>
+<button type="button" class="button outline" data-list-add>Add {{ field.item_label | lower }}</button>
+<noscript>Turn on JavaScript to add or remove items.</noscript>
+</section>
+{% else %}{{ input_field(field, field.key, values.get(field.key, field.default), field.key in configured) }}{% endif %}
+{% endmacro %}
+{# One preset (layouts.Preset): its choices, its basic fields under Custom, and a note when the household
+   refresh is slower than the chosen option needs. #}
+{% macro preset_block(row) %}{% set preset = row.preset %}{% set options = [] %}
+{% for option in preset.options %}{% set _ = options.append((loop.index0 | string, option.label, option.description, option['values'])) %}{% endfor %}
+{% call preset_group('preset.' ~ preset.key, preset.label, options, 'custom' if row.choice is none else row.choice | string, preset.description, preset.style) %}
+{# Every field the preset sets, advanced or not, sits under Custom: a chosen preset would overwrite it. #}
+{% for field in manifest.settings if field.key in preset.fields %}{{ setting(field) }}{% endfor %}
+{% endcall %}
+{% if row.needs %}<p class="alert notice card-note" role="status">Art Frames refreshes layouts every {{ duration(row.refresh * 60) }}, so {{ manifest.name }} changes at most that often. <button class="button outline sm" type="submit" form="app-refresh" name="minutes" value="{{ row.needs }}">Refresh every {{ duration(row.needs * 60) }}</button></p>{% endif %}
+{% endmacro %}
+{% block title %}{{ manifest.name }}{% endblock %}
+{% set crumbs = [('Layouts', url_for('apps_index')), (manifest.name, none)] %}
+{% set on = usage | selectattr('used') | list %}
+{% block content %}
+{% call page_header(manifest.name, manifest.description or ('Used on ' ~ (on | map(attribute='name') | join(', ')) if on else 'Not on any TV yet')) %}
+  {% if can_show and here.used and state.tone != 'setup' %}<form method="post" action="{{ url_for('show_app') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="app:{{ app_id }}"><input type="hidden" name="hold" value="next-change"><button class="button" type="submit" name="app" value="{{ app_id }}">{{ icon('play') }}Show on {{ cfg.tv_name }} now</button></form>{% endif %}
+{% endcall %}
+<div class="settings-sections app-sections">
+{% if state.tone == 'setup' %}<div class="alert banner" role="status">{{ icon('alert') }}<span class="banner-text"><strong>Needs setup.</strong> {{ state.text }}</span><a class="button sm" href="#field-{{ state.missing_keys[0] }}">Set up</a></div>
+{% elif state.tone == 'failing' %}<div class="alert banner" role="status">{{ icon('alert') }}<span class="banner-text">{{ state.text }}</span><a class="button outline sm" href="{{ url_for('tv_health', tv=state.failing[0].id) }}">Open Health</a></div>{% endif %}
+{% if manifest.settings %}
+{% call(part) settings_card('settings', 'Settings', 'Every TV that shows ' ~ manifest.name ~ ' uses these.', url_for('save_app', app_id=app_id), errors.get('settings'), 'Save', manifest.name ~ ' settings') %}
+{% if part == 'fields' %}
+<input type="hidden" name="manifest" value="{{ manifest_token }}">
+{# The first submit button is the one Enter presses: keep it Save, never a Remove below. #}
+<button class="sr-only" type="submit" tabindex="-1" aria-hidden="true">Save</button>
+{# A preset shows where its first basic field would be, or after the basic fields when all its fields are advanced. #}
+{% set in_presets = [] %}{% for row in presets %}{% for key in row.preset.fields %}{% set _ = in_presets.append(key) %}{% endfor %}{% endfor %}
+{% set placed = [] %}
+{% for field in manifest.settings | rejectattr('advanced') %}
+{% for row in presets if row.preset.key not in placed and field.key in row.preset.fields %}{% set _ = placed.append(row.preset.key) %}{{ preset_block(row) }}{% endfor %}
+{% if field.key not in in_presets %}{{ setting(field) }}{% endif %}
+{% endfor %}
+{% for row in presets if row.preset.key not in placed %}{{ preset_block(row) }}{% endfor %}
+{% set advanced = manifest.settings | selectattr('advanced') | rejectattr('key', 'in', in_presets) | list %}
+{% if advanced %}
+{% call advanced_row('settings-advanced', changed_count(advanced, values, configured), open=errors.get('settings') is not none) %}
+{% for field in advanced %}{{ setting(field) }}{% endfor %}
+{% endcall %}
+{% endif %}
+{% endif %}
+{% endcall %}
+{% else %}
+<section class="card settings-panel" id="settings"><div class="card-header"><h2 class="card-title">Settings</h2><p class="card-description">{{ manifest.name }} has no settings.</p></div></section>
+{% endif %}
+
+{% set options = manifest.display_settings %}
+<section class="card settings-panel" id="on-each-tv" aria-labelledby="on-each-tv-title">
+  <div class="card-header"><div class="card-title-row"><h2 class="card-title" id="on-each-tv-title">On each TV</h2>{% if options %}{{ unsaved_tag() }}{% endif %}</div><p class="card-description">The TVs whose schedule shows {{ manifest.name }}{% if options %}, and how it looks on each. A TV that does not show it yet keeps these for later{% endif %}.</p></div>
+  {% if options %}{{ card_notes('on-each-tv', errors.get('on-each-tv')) }}{% endif %}
+  {% macro tv_rows() %}
+  <ul class="tv-use">
+  {% for row in usage %}
+    <li class="tv-use-row{{ ' muted' if not row.used }}">
+      <div class="tv-use-name"><strong>{{ row.name }}</strong><span class="small">{% if row.custom_site %}Shows a custom website{% elif row.used %}{{ row.places | join(' · ') }}{% else %}Not in its schedule{% endif %}</span>{% if options %}<input type="hidden" name="tvs" value="{{ row.id }}">{% endif %}</div>
+      {% if options %}<div class="tv-use-options">{% for item in options %}<label class="check"{% if item.description %} title="{{ item.description }}"{% endif %}><input type="checkbox" class="switch" name="tv.{{ row.id }}.{{ item.key }}" {% if row['values'].get(item.key) %}checked{% endif %}> {{ item.label }}<span class="sr-only"> on {{ row.name }}</span></label>{% endfor %}</div>{% endif %}
+      <div class="tv-use-action">{% if not row.custom_site %}{% if row.used %}<a class="button ghost sm" href="{{ url_for('tv_schedule', tv=row.id) }}">Schedule ›</a>{% elif many_apps %}<a class="button outline sm" href="{{ url_for('tv_schedule', tv=row.id, _anchor='add-' ~ app_id) }}">Use on {{ row.name }}…</a>{% endif %}{% endif %}</div>
+    </li>
+  {% endfor %}
+  </ul>
+  {% endmacro %}
+  {% if options %}
+  {% call card_form('on-each-tv', url_for('save_app_tv_settings'), manifest.name ~ ' on each TV') %}
+    {% set described = options | selectattr('description') | list %}
+    {% if described %}<p class="small tv-use-help">{% for item in described %}{{ item.label }}: {{ item.description }}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+    <input type="hidden" name="manifest" value="{{ manifest.id }}"><input type="hidden" name="options" value="{{ options_token }}">
+    {{ tv_rows() }}
+    <div class="card-footer"><button class="button" type="submit">Save</button></div>
+  {% endcall %}
+  {% else %}{{ tv_rows() }}{% endif %}
+</section>
+
+<section class="card settings-panel" id="preview" aria-labelledby="preview-title">
+  <div class="card-header"><h2 class="card-title" id="preview-title">Preview on {{ cfg.tv_name }}</h2><p class="card-description">See {{ manifest.name }} with {{ cfg.tv_name }}'s options. A preview is not on the TV yet.</p></div>
+  <div class="preview-panel" data-preview-panel>
+    <form method="post" action="{{ url_for('preview_site') }}" class="preview-toolbar" data-preview-form data-image-url="{{ url_for('screen_image') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="app" value="{{ app_id }}">
+      {# A layout that needs setup can't make a picture yet: say what to add instead of a preview that fails. #}
+      <button class="button outline" type="submit" {% if state.tone == 'setup' %}disabled{% endif %}>Make a preview</button>
+      <p class="small" data-preview-status role="status" aria-live="polite">{% if state.tone == 'setup' %}Add the {{ setting_words((manifest.settings | selectattr('key', 'equalto', state.missing_keys[0]) | first).label) }} to make a preview.{% endif %}</p>
+    </form>
+    <div class="picture-frame" data-preview-stage>{% if preview_revision %}<img src="{{ url_for('screen_image', v=preview_revision) }}" alt="Latest preview of {{ manifest.name }}">{% else %}<div class="empty-frame"><p>No preview yet</p><span>Make a preview to see {{ manifest.name }}.</span></div>{% endif %}</div>
+    {% if can_show and state.tone != 'setup' %}<form method="post" action="{{ url_for('send_preview') }}" class="dialog-footer">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="app:{{ app_id }}"><input type="hidden" name="preview_revision" value="{{ preview_revision }}" data-preview-revision>
+      <button class="button" type="submit" disabled>{{ icon('play') }}Show on {{ cfg.tv_name }}</button>
+    </form>{% endif %}
+  </div>
+</section>
+
+{% if source %}<p class="small app-source">From {% if source.url %}<a href="{{ source.url }}" target="_blank" rel="noopener noreferrer">{{ source.text }} ↗</a>{% else %}{{ source.text }}{% endif %}{% if source.installed %} · installed {{ source.installed }}{% endif %}</p>{% endif %}
+</div>
+{% if presets | selectattr('needs') | list %}<form id="app-refresh" method="post" action="{{ url_for('app_refresh', app_id=app_id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"></form>{% endif %}
+{% endblock %}

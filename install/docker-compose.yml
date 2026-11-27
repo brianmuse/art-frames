@@ -1,0 +1,143 @@
+# Art Frames: the install for Docker Compose, Synology Container Manager, Portainer and Unraid.
+#
+# 1. Put this file in an empty folder.
+# 2. Run: docker compose up -d
+# 3. Open the address the log prints: docker compose logs art-frames
+#    The first visit asks for the setup code from the same log, then for a new password.
+#
+# It uses the HTML/CSS renderer and the host network. The host network lets Art Frames find
+# your TV, wake it, find a presence sensor and answer at http://art-frames.local:8765.
+# Docker Desktop on a Mac or Windows PC has no LAN host network: add docker-compose.bridge.yml.
+#
+# Art Frames serves plain HTTP on your home network. Do not forward port 8765 from your router.
+# For HTTPS, put a reverse proxy in front (see docs/hosting.md).
+#
+# It also runs three layouts from the art-frames-layouts repository: Morning dashboard, News & weather
+# and Weather. A new TV shows the day's artwork. Choose when each layout shows on the TV's Schedule page,
+# and set its city or calendars on its page under Layouts.
+#
+# Your settings, artwork and TV pairings live in the "data" volume. Each layout keeps its settings and
+# saved data in its own volumes. Keep all volumes when you update.
+name: art-frames
+
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+
+x-hardening: &hardening
+  restart: unless-stopped
+  logging: *logging
+  init: true
+  user: "10001:10001"
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+
+services:
+  art-frames:
+    <<: *hardening
+    # To stay on one version, set ART_FRAMES_VERSION (for example 0.1) in a .env file next to this one.
+    image: ghcr.io/brianmuse/art-frames:${ART_FRAMES_VERSION:-latest}
+    init: false # Art Frames handles stop signals itself.
+    network_mode: host
+    group_add: ["10001"] # The private renderer socket group.
+    mem_limit: 768m
+    pids_limit: 64
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    environment:
+      ART_FRAMES_BIND: 0.0.0.0 # Answer on the home network, not only on this machine.
+      ART_FRAMES_PORT: "${ART_FRAMES_PORT:-8765}"
+      TZ: "${TZ:-UTC}"
+      ART_FRAMES_DATA_DIR: /data
+      ART_FRAMES_RENDERER_SOCKET: /run/dayframe-renderer/render.sock
+      # The layouts. Each one copies its layout.json next to its socket.
+      # The first layout (Morning dashboard):
+      ART_FRAMES_DEFAULT_SITE_SOCKET: /run/dayframe-site/site.sock
+      ART_FRAMES_LAYOUT_MANIFEST: /run/dayframe-site/layout.json
+      ART_FRAMES_LAYOUT_ID: morning
+      ART_FRAMES_LAYOUT_CONFIG_ID: morning
+      # The other layouts, as "<id>=<settings folder>". Each has a folder in /run/dayframe-layouts/apps.
+      ART_FRAMES_APPS: news=news weather=weather
+      ART_FRAMES_SITES_DIR: /run/dayframe-layouts
+      ART_FRAMES_APPS_SOCKET_DIR: /run/dayframe-layouts/apps
+      ART_FRAMES_LOG_LEVEL: INFO
+      # Optional: ART_FRAMES_MDNS: "0" turns off the art-frames.local name.
+      # Optional: ART_FRAMES_UPDATE_CHECK: "0" turns off the daily "Update available" check.
+    volumes:
+      - data:/data
+      - render-ipc:/run/dayframe-renderer:ro
+      # Art Frames writes each layout's settings here. The layout reads them at /site-config.
+      - layout-morning-settings:/data/layout-settings/morning
+      - layout-news-settings:/data/layout-settings/news
+      - layout-weather-settings:/data/layout-settings/weather
+      - layout-morning-ipc:/run/dayframe-site:ro
+      - layout-news-ipc:/run/dayframe-layouts/apps/news:ro
+      - layout-weather-ipc:/run/dayframe-layouts/apps/weather:ro
+    # Start the layouts first: their images set the owner of the new settings volumes.
+    depends_on: [renderer, layout-morning, layout-news, layout-weather]
+    stop_grace_period: 30s
+
+  # Turns a web page into the picture for the TV. No network.
+  renderer:
+    <<: *hardening
+    image: ghcr.io/brianmuse/art-frames-renderer-static:${ART_FRAMES_VERSION:-latest}
+    network_mode: none
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=128m
+    volumes:
+      - render-ipc:/run/dayframe-renderer
+
+  # The layouts. Each one serves its pages to Art Frames over a private socket. A layout uses
+  # the network only to fetch its own data: the weather from Open-Meteo, headlines from Google News
+  # and the calendars you add. It gets only its own settings, never your TV pairings or password.
+  # To stay on one version, set ART_FRAMES_LAYOUTS_VERSION (for example 0.1) in the .env file.
+  layout-morning:
+    <<: *hardening
+    image: ghcr.io/brianmuse/art-frames-layout-morning:${ART_FRAMES_LAYOUTS_VERSION:-latest}
+    network_mode: bridge
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - layout-morning-ipc:/run/dayframe-site
+      - layout-morning-settings:/site-config:ro
+      - layout-morning-state:/site-state
+
+  layout-news:
+    <<: *hardening
+    image: ghcr.io/brianmuse/art-frames-layout-news:${ART_FRAMES_LAYOUTS_VERSION:-latest}
+    network_mode: bridge
+    mem_limit: 384m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - layout-news-ipc:/run/dayframe-site
+      - layout-news-settings:/site-config:ro
+      - layout-news-state:/site-state
+
+  layout-weather:
+    <<: *hardening
+    image: ghcr.io/brianmuse/art-frames-layout-weather:${ART_FRAMES_LAYOUTS_VERSION:-latest}
+    network_mode: bridge
+    mem_limit: 384m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - layout-weather-ipc:/run/dayframe-site
+      - layout-weather-settings:/site-config:ro
+      - layout-weather-state:/site-state
+
+volumes:
+  data:
+  render-ipc:
+  layout-morning-ipc:
+  layout-morning-settings:
+  layout-morning-state:
+  layout-news-ipc:
+  layout-news-settings:
+  layout-news-state:
+  layout-weather-ipc:
+  layout-weather-settings:
+  layout-weather-state:

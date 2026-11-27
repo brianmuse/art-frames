@@ -1,0 +1,25 @@
+name: TV compatibility report
+description: Report a tested TV model and how it wakes, sleeps and shows images
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for testing. The tested models are listed in docs/compatibility.md.
+        Remove IP addresses, MAC addresses, tokens, calendar links and private screenshots from everything you paste here.
+  - type: input
+    id: model
+    attributes:
+      label: TV model and year
+    validations:
+      required: true
+  - type: input
+    id: firmware
+    attributes:
+      label: TV firmware version
+  - type: textarea
+    id: results
+    attributes:
+      label: Results
+      description: Tell us what worked and what did not. Cover pairing, image upload, scheduled wake, sleep after no one is watching, and whether a TV program you were watching stayed on.
+    validations:
+      required: true

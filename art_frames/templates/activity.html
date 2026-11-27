@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import page_header %}
+{% block title %}Activity{% endblock %}
+{% set crumbs = [('Activity', none)] %}
+{% macro row(line) %}{% set entry = line.entries[0] %}
+<li class="activity-row"><details>
+  <summary class="activity-line"><span class="status-dot tone-{{ line.tone }}" aria-hidden="true"></span><span class="activity-time">{{ line.time }}</span><span class="activity-tv">{{ line.tv_name }}</span><span class="activity-action"><span class="activity-label">{{ line.label }}</span>{% if line.repeat %}<span class="activity-repeat"> · {{ line.repeat }}</span>{% endif %}{% if line.badge %}<span class="badge secondary activity-badge">{{ line.badge }}</span>{% endif %}</span><span class="status-word tone-{{ line.tone }}">{{ line.status }}</span></summary>
+  <div class="activity-detail">
+    <p class="small">{{ line.status }}{% if not entry.finished_at %} since {{ entry.time }}{% else %} <span title="{{ entry.time }}">{{ entry.ago }}</span>{% if entry.took %} · took {{ entry.took }}{% endif %}{% endif %}{% if line.source == 'schedule' %} · From the schedule{% endif %}</p>
+    {% if entry.message %}<p class="alert notice {{ 'neutral' if entry.state in ('skipped', 'cancelled') else entry.category }}">{{ entry.message }}</p>{% endif %}
+    {% if line.count > 1 %}<ul class="activity-repeats small" aria-label="Times">{% for item in line.entries %}<li>{{ item.time }}</li>{% endfor %}</ul>{% endif %}
+    {% if entry.state == 'queued' %}<form method="post" action="{{ url_for('cancel_job', job_id=entry.id, tv=entry.tv) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline sm" type="submit" aria-label="Cancel {{ entry.label }} on {{ entry.tv_name }}">Cancel</button></form>{% endif %}
+  </div>
+</details>{% if entry.step %}<p class="small activity-step">{{ entry.step }}</p>{% endif %}</li>
+{% endmacro %}
+{% block content %}
+{% set filters = activity.filters %}
+{% set here = {'filter_tv': filters.filter_tv or None, 'outcome': filters.outcome if filters.outcome != 'all' else None, 'schedule': '1' if filters.schedule else None} %}
+{% call page_header('Activity', 'What Art Frames did on your TVs, and what it is doing now.') %}<a class="button outline" href="{{ url_for('activity', **here) }}">Reload</a>{% endcall %}
+<div class="activity-page">
+<form method="get" action="{{ url_for('activity') }}" class="card activity-filters" data-auto-submit>
+  <input type="hidden" name="tv" value="{{ screen_id }}">{% if filters.outcome != 'all' %}<input type="hidden" name="outcome" value="{{ filters.outcome }}">{% endif %}
+  <label>TV<select name="filter_tv"><option value="">All TVs</option>{% for tv in activity.tvs %}<option value="{{ tv.id }}" {% if tv.id == filters.filter_tv %}selected{% endif %}>{{ tv.name }}</option>{% endfor %}</select></label>
+  <button class="button secondary sm" type="submit" data-auto-submit-go>Apply</button>
+  <nav class="tabs" aria-label="Outcome">{% for value, label in [('all', 'All'), ('problems', 'Problems')] %}<a class="tab" href="{{ url_for('activity', **dict(here, outcome=value if value != 'all' else None)) }}" {% if filters.outcome == value %}aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}</nav>
+  <label class="check"><input type="checkbox" class="switch" role="switch" name="schedule" value="1" {% if filters.schedule %}checked{% endif %}>Include automatic updates{% if activity.hidden %}<span class="small">({{ activity.hidden }} hidden)</span>{% endif %}</label>
+</form>
+{% for key, title, empty in [('now', 'Now', 'Nothing is running. Each TV runs one command at a time.'), ('yours', 'Recent commands', activity.empty), ('schedule', 'Schedule', 'No scheduled updates to show.')] %}
+{% if key != 'schedule' or filters.schedule %}
+<section class="activity-section" aria-labelledby="activity-page-{{ key }}"><h2 id="activity-page-{{ key }}">{{ title }}</h2>
+  {% if activity[key] %}<ul class="activity-list">{% for line in activity[key] %}{{ row(line) }}{% endfor %}</ul>{% else %}<p class="activity-empty">{{ empty }}</p>{% endif %}
+</section>
+{% endif %}
+{% endfor %}
+</div>
+{% endblock %}

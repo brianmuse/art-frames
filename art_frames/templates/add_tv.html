@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import page_header, advanced_row with context %}
+{% block title %}Add TV{% endblock %}
+{% set crumbs = [('Home', url_for('dashboard', tv=None)), ('Add TV', none)] %}
+{% block content %}
+{{ page_header('Add TV', 'Add another Frame. It shares your layouts and artwork. You pair it next.') }}
+<section class="card settings-panel app-settings">
+{% if error %}<p role="alert" class="alert notice error card-note">{{ error }}</p>{% endif %}
+<form method="post" action="{{ url_for('add_tv') }}" class="stack" data-add-tv><input type="hidden" name="csrf" value="{{ csrf }}">
+<label>TV name<input name="name" required maxlength="60" placeholder="Living room" value="{{ values.name }}"></label>
+{% include '_tv_discovery.html' %}
+{% call advanced_row('add-tv-address', open=error != '' and values.tv_ip != '', label='Enter the address yourself') %}
+<label>TV's local IP address<input name="tv_ip" placeholder="192.168.1.50" value="{{ values.tv_ip }}"></label><label>TV's MAC address, optional<input name="tv_mac" placeholder="AA:BB:CC:DD:EE:FF" value="{{ values.tv_mac }}"><small>Needed to turn the TV on at a set time.</small></label>
+{% endcall %}
+<div class="card-footer"><button class="button" type="submit">Add TV</button></div></form></section>
+{% endblock %}

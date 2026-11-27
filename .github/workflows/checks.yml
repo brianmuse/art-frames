@@ -1,0 +1,42 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+env:
+  ASTRO_TELEMETRY_DISABLED: '1'
+jobs:
+  test:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+      - run: python -m pip install uv
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - run: uv sync --frozen --group renderer
+      - run: npm --prefix website ci
+      - run: npm --prefix website run build
+      - run: uv run playwright install --with-deps chromium
+      - run: uv run ruff check .
+      - run: DAYFRAME_TEST_RENDER=1 uv run pytest
+      - run: uv export --frozen --no-header --no-dev --no-emit-project --format requirements-txt > /tmp/requirements.lock && diff -u requirements.lock /tmp/requirements.lock
+      - run: uv export --frozen --no-header --only-group renderer --no-emit-project --format requirements-txt > /tmp/renderer.lock && diff -u renderer/requirements.lock /tmp/renderer.lock
+      - run: uv export --frozen --no-header --only-group static-renderer --no-emit-project --format requirements-txt > /tmp/static.lock && diff -u renderer/requirements.static.lock /tmp/static.lock
+      - run: docker compose config --quiet
+      - run: docker compose -f compose.host.yaml config --quiet
+      - run: docker compose -f compose.static.yaml config --quiet
+      - run: docker compose -f compose.static.host.yaml config --quiet
+      - run: docker compose -f install/docker-compose.yml config --quiet
+      - run: docker compose -f install/docker-compose.yml -f install/docker-compose.bridge.yml config --quiet
+      - run: sh scripts/check-host.sh
+      - run: docker build -t dayframe:test .
+      - run: docker build -f renderer/Dockerfile -t dayframe-renderer:test .
+      - run: sh scripts/check-containers.sh
+      - run: docker build -f renderer/Dockerfile.static -t dayframe-renderer-static:test .
+      - run: docker build -f Dockerfile.website -t dayframe-website:test .
+      - run: docker build --build-arg DAYFRAME_BUNDLED_SITE=none -t dayframe-static:test .
+      - run: sh scripts/check-host.sh static
+      - run: sh scripts/check-containers.sh dayframe-static:test dayframe-renderer-static:test static dayframe-website:test

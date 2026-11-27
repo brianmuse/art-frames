@@ -1,0 +1,56 @@
+{# More picture settings, inside the Picture page's Advanced fold: the TV light sensor, Sleep After, motion
+   sensitivity, color temperature and every Art Mode setting the TV reports. Drawn from the last stored
+   reading only; the page never contacts the TV. Each change is read back from the TV. #}
+{% from '_ui.html' import panel_results with context %}
+<section class="fold-section art-mode-options" id="art-mode-options" aria-labelledby="art-mode-options-title">
+  <h3 class="fold-section-title" id="art-mode-options-title">Art Mode options</h3>
+  <p class="small">{% if display %}Each change is read back from the TV. Last read {{ display_checked }}.{% else %}No settings read yet. Select Read from TV at the top of the page.{% endif %}</p>
+  {{ panel_results('options') }}
+  {% if display %}
+  {% if sensor_on %}
+  <dl class="display-details">
+    <div><dt>TV light sensor</dt><dd>Off<small>Set by the sensor. It keeps the TV's own light sensor off.</small></dd></div>
+    <div><dt>Sleep After</dt><dd>Managed by the sensor<small>Off during the sensor hours, 5 min after {{ sensor_hours_end }}.</small></dd></div>
+  </dl>
+  {% else %}
+  <form method="post" action="{{ url_for('set_light_sensor') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <fieldset><legend>TV light sensor</legend><p class="small">When it is on, the TV can change its own brightness. Now: {{ {'on': 'On', 'off': 'Off'}.get(display.get('sensor'), 'Not reported') }}.</p><div class="days"><label><input type="radio" name="sensor" value="on" {% if display.get('sensor') == 'on' %}checked{% endif %} required>On</label><label><input type="radio" name="sensor" value="off" {% if display.get('sensor') == 'off' %}checked{% endif %}>Off</label></div></fieldset>
+    <button class="button outline" type="submit">Save</button>
+  </form>
+  {% set timer = display.get('motion_timer') %}
+  {% if 'motion_timer' not in display %}
+  <p class="small">Select Read from TV to load Sleep After.</p>
+  {% elif timer is none %}
+  <p class="small">This TV does not report Sleep After. Change it on the TV: Art Mode Options → Sleep After.</p>
+  {% else %}
+  <form method="post" action="{{ url_for('set_sleep_after') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Sleep After<small>The TV turns off after this long without motion. Now: {% if timer in sleep_choices %}{{ 'Off' if timer == 'off' else timer ~ ' minutes' }}{% else %}Not reported{% endif %}.</small>
+      <select name="motion_timer" required>{% for choice in sleep_choices %}<option value="{{ choice }}" {% if timer == choice %}selected{% endif %}>{{ 'Off' if choice == 'off' else choice ~ ' minutes' }}</option>{% endfor %}</select></label>
+    <button class="button outline" type="submit">Save</button>
+  </form>
+  {% endif %}
+  {% endif %}
+  {% if display.get('motion_sensitivity') is not none %}
+  <form method="post" action="{{ url_for('set_motion_sensitivity') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <fieldset><legend>Motion sensitivity</legend><p class="small">1 is the least sensitive and 3 the most. Now: {{ display.get('motion_sensitivity') }}.</p><div class="days">{% for level in sensitivity_range %}<label><input type="radio" name="motion_sensitivity" value="{{ level }}" {% if display.get('motion_sensitivity') == level %}checked{% endif %} required>{{ level }}</label>{% endfor %}</div></fieldset>
+    <button class="button outline" type="submit">Save</button>
+  </form>
+  {% endif %}
+  {% if display.get('motion_timer') is not none or display.get('motion_sensitivity') is not none %}<p class="small">The TV's own motion sensor may not see through the frame. With a room sensor, Art Frames handles this.</p>{% endif %}
+  {% set warmth = display.get('color_temperature') %}
+  {% if warmth is not none %}
+  <form method="post" action="{{ url_for('set_color_temperature') }}"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Color temperature, {{ color_range[0] }} to {{ color_range[1] }}<small>Now: {{ warmth }}. Selected: <output data-range-value>{{ warmth }}</output>.</small>
+      <input type="range" name="color_temperature" min="{{ color_range[0] }}" max="{{ color_range[1] }}" step="1" value="{{ warmth }}"></label>
+    <button class="button outline" type="submit">Save</button>
+  </form>
+  {% endif %}
+  {% if display.get('night_mode') is not none %}
+  <dl class="display-details"><div><dt>Night Mode</dt><dd><span class="badge secondary">{{ {'on': 'On', 'off': 'Off'}.get(display.get('night_mode'), display.get('night_mode')) }}</span> <small>Read only</small></dd></div></dl>
+  {% endif %}
+  {% if display.get('items') %}<details><summary>All Art Mode settings</summary>
+    <table class="table settings-table"><thead><tr><th scope="col">Item</th><th scope="col">Value</th><th scope="col">Min</th><th scope="col">Max</th></tr></thead>
+    <tbody>{% for item in display['items'] %}<tr><td>{{ item['item'] }}</td><td>{{ item['value'] }}</td><td>{{ item['min'] }}</td><td>{{ item['max'] }}</td></tr>{% endfor %}</tbody></table>
+    <p class="small">As reported by the TV. Items differ between models.</p></details>{% endif %}
+  {% endif %}
+</section>

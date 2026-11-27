@@ -1,0 +1,43 @@
+{
+  "_about": [
+    "An Akamatis Smart Device (firmware 1.3.0, ESPHome 2025.5.2), read on 2026-11-01. Its name suffix (the end of its MAC address) is made up here.",
+    "txt: its _esphomelib._tcp TXT records. The real device also sends its MAC address; the mac value here is made up, so tests can check that it is dropped.",
+    "events: server-sent events from GET /events, cut to the readings Art Frames can use plus one text sensor. The text sensor holds a made-up MAC address.",
+    "entities: the same readings as the native API lists them. The web server sends no device classes; these are ESPHome's defaults for ld2410 (has_target occupancy, has_moving_target motion, has_still_target occupancy) and ltr_als_ps (ambient_light illuminance)."
+  ],
+  "service": "akamatis-smart-device-005301._esphomelib._tcp.local.",
+  "addresses": ["192.168.1.148"],
+  "port": 6053,
+  "txt": {
+    "project_name": "Akamatis.SmartHomeDevice",
+    "project_version": "1.3.0",
+    "board": "esp32-c3-devkitm-1",
+    "platform": "ESP32",
+    "network": "wifi",
+    "version": "2025.5.2",
+    "friendly_name": "Akamatis Smart Device 005301",
+    "mac": "02:00:5e:00:53:01"
+  },
+  "device_info": {
+    "name": "akamatis-smart-device-005301",
+    "friendly_name": "Akamatis Smart Device 005301",
+    "manufacturer": "Espressif",
+    "model": "esp32-c3-devkitm-1",
+    "project_name": "Akamatis.SmartHomeDevice",
+    "project_version": "1.3.0",
+    "mac_address": "02:00:5e:00:53:01"
+  },
+  "entities": [
+    {"domain": "binary_sensor", "object_id": "presence", "name": "Presence", "device_class": "occupancy"},
+    {"domain": "binary_sensor", "object_id": "moving_target", "name": "Moving Target", "device_class": "motion"},
+    {"domain": "binary_sensor", "object_id": "still_target", "name": "Still Target", "device_class": "occupancy"},
+    {"domain": "sensor", "object_id": "ambient_light", "name": "Ambient Light", "device_class": "illuminance", "unit": "lx"},
+    {"domain": "sensor", "object_id": "actual_gain", "name": "Actual Gain"},
+    {"domain": "sensor", "object_id": "moving_distance", "name": "Moving Distance", "device_class": "distance", "unit": "cm"},
+    {"domain": "sensor", "object_id": "still_distance", "name": "Still Distance", "device_class": "distance", "unit": "cm"},
+    {"domain": "sensor", "object_id": "detection_distance", "name": "Detection Distance", "device_class": "distance", "unit": "cm"},
+    {"domain": "sensor", "object_id": "move_energy", "name": "Move Energy", "unit": "%"},
+    {"domain": "sensor", "object_id": "still_energy", "name": "Still Energy", "unit": "%"}
+  ],
+  "events": "retry: 30000\nid: 6645\nevent: ping\ndata: {\"title\":\"Akamatis Smart Device 005301\",\"comment\":\"\",\"ota\":false,\"log\":true,\"lang\":\"en\"}\n\nevent: state\ndata: {\"id\":\"binary_sensor-presence\",\"name\":\"Presence\",\"icon\":\"mdi:account\",\"entity_category\":0,\"value\":true,\"state\":\"ON\"}\n\nevent: state\ndata: {\"id\":\"binary_sensor-moving_target\",\"name\":\"Moving Target\",\"icon\":\"mdi:motion-sensor\",\"entity_category\":0,\"value\":false,\"state\":\"OFF\"}\n\nevent: state\ndata: {\"id\":\"binary_sensor-still_target\",\"name\":\"Still Target\",\"icon\":\"mdi:motion-sensor\",\"entity_category\":0,\"value\":true,\"state\":\"ON\"}\n\nevent: state\ndata: {\"id\":\"sensor-ambient_light\",\"name\":\"Ambient Light\",\"icon\":\"mdi:brightness-6\",\"entity_category\":0,\"value\":null,\"state\":\"NA\",\"uom\":\"lx\"}\n\nevent: log\ndata: [C][web_server:285]: Web Server:\n\nevent: state\ndata: {\"id\":\"sensor-moving_distance\",\"name\":\"Moving Distance\",\"icon\":\"mdi:signal-distance-variant\",\"entity_category\":0,\"value\":30,\"state\":\"30 cm\",\"uom\":\"cm\"}\n\nevent: state\ndata: {\"id\":\"text_sensor-03__mac_address\",\"name\":\"03: MAC address\",\"icon\":\"mdi:bluetooth\",\"entity_category\":2,\"value\":\"02:00:5e:00:53:01\",\"state\":\"02:00:5e:00:53:01\"}\n\nevent: state\ndata: {\"id\":\"button-05__esp32_-_factory_reset\",\"name\":\"05: ESP32 - Factory reset\",\"icon\":\"mdi:restart-alert\",\"entity_category\":0}\n\nevent: ping\n\nevent: state\ndata: {\"id\":\"sensor-ambient_light\",\"value\":3.473279953,\"state\":\"3.5 lx\"}\n\n"
+}

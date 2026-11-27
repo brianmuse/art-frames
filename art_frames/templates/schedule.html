@@ -1,0 +1,197 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header, card_notes, duration_select, day_toggle, hold_banner with context %}
+{% from '_starters.html' import starter_undo, starter_links with context %}
+{% block title %}Schedule · {{ cfg.tv_name }}{% endblock %}
+{% set crumbs = [(cfg.tv_name, url_for('tv_overview')), ('Schedule', none)] %}
+{# The Schedule page: a day timeline (web.schedule_page, web.day_timeline).
+   - Tabs: Every day, then Mon to Sun. A day uses every day's plan until it is customized.
+   - Lanes: one per layout, with its blocks. Where blocks overlap, the layouts take turns.
+   - The strip "On the TV": what the TV shows over the day. Artwork, the base layer, fills the gaps.
+   - Editors: hidden forms that open by their #id (CSS :target), so they work without JS. app.js
+     [data-timeline] drags chips, blocks, block edges and the turn-on pin, and submits the same forms. #}
+{% set day_url = url_for('tv_schedule', day=tab) %}
+{% macro version_field() %}<input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="schedule_version" value="{{ schedule_version }}">{% endmacro %}
+{% macro cancel_button() %}<a class="button outline" href="{{ day_url }}#timeline" data-cancel>Cancel</a>{% endmacro %}
+{# An action that asks first, inline: the summary opens the question, the last button submits `form`. #}
+{% macro confirm_button(form, label, question, summary_class='button ghost destructive', submit_class='button destructive sm') %}<details class="confirm-delete" data-confirm><summary class="{{ summary_class }}">{{ label }}</summary><span class="confirm-row"><span class="confirm-text">{{ question }}</span><button class="button outline sm" type="button" data-confirm-cancel>Cancel</button><button class="{{ submit_class }}" type="submit" form="{{ form }}">{{ label }}</button></span></details>{% endmacro %}
+{% macro remove_button(form, question) %}{{ confirm_button(form, 'Remove', question) }}{% endmacro %}
+{# An editor: a card that shows only when the address points at it, or after its form failed to save. #}
+{% macro editor(id, title, description='') %}
+<section class="card settings-panel editor{{ ' open' if errors.get(id) else '' }}" id="{{ id }}" aria-labelledby="{{ id }}-title">
+  <div class="card-header"><h2 class="card-title" id="{{ id }}-title">{{ title }}</h2>{% if description %}<p class="card-description">{{ description }}</p>{% endif %}</div>
+  {{ card_notes(id, errors.get(id)) }}
+  {{ caller() }}
+</section>
+{% endmacro %}
+{% macro times(values) %}<div class="form-grid time-fields"><label>From<input type="time" name="start" step="900" value="{{ values.start }}" required></label><label>To<input type="time" name="end" step="900" value="{{ '00:00' if values.end == '24:00' else values.end }}" required></label></div>
+<p class="small">A block ends at midnight at the latest. Pick 12:00 AM for midnight.</p>{% endmacro %}
+{% macro left(value) %}{{ ((value.split(':')[0] | int) * 60 + (value.split(':')[1] | int)) / 1440 * 100 }}{% endmacro %}
+{% macro chips() %}<div class="chips">{% for item in installed_apps %}<a class="app-chip" href="#add-{{ item.id }}" data-app="{{ item.id }}" draggable="false"><span class="swatch hue-{{ loop.index0 % 6 }}"></span>{{ item.name }}</a>{% endfor %}</div>{% endmacro %}
+{% block content %}
+{{ page_header('Schedule', 'What ' ~ cfg.tv_name ~ ' shows, and when. Times are in ' ~ cfg.timezone ~ '.') }}
+{{ hold_banner(hold, screen_id, 'schedule') }}
+{% if now_line and now_line.text %}<p class="schedule-now"><span class="label-inline">{{ "Then" if now_line.held else "Now" }}</span> {% if now_line.held %}{{ now_line.held }}{% else %}{{ now_line.text }}.{% if now_line.next %}<span class="schedule-next"> Next: {{ now_line.next }}.</span>{% endif %}{% endif %}</p>{% endif %}
+{% if custom_site %}
+<p class="alert neutral">{{ cfg.tv_name }} shows your custom website all the time. Blocks on the timeline work only with layouts. <a href="{{ url_for('household', _anchor='website') }}">Change the website</a></p>
+{% elif not installed_apps and not apps_supported %}
+<p class="alert neutral">No layouts are installed, so {{ cfg.tv_name }} shows the starter website. <a href="https://github.com/brianmuse/art-frames/blob/main/docs/cli-deployment.md#layouts" target="_blank" rel="noopener noreferrer">How to install layouts ↗</a></p>
+{% elif not installed_apps %}
+<p class="alert neutral">Install a layout to choose what {{ cfg.tv_name }} shows. <a href="https://github.com/brianmuse/art-frames/blob/main/docs/cli-deployment.md#layouts" target="_blank" rel="noopener noreferrer">How to install layouts ↗</a></p>
+{% endif %}
+{% if turns_note %}
+<form class="alert neutral turns-note" method="post" action="{{ url_for('dismiss_turns_note') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="day" value="{{ tab }}"><span>Your older time rules used different speeds. Layouts now take turns at one speed on every day: every {{ duration(swap_seconds) }}.</span><span class="turns-note-actions"><a href="#turns">Change</a><button class="button outline sm" type="submit">OK</button></span></form>
+{% endif %}
+
+<nav class="tabs day-tabs" aria-label="Days">
+  {% for item in tabs %}<a class="tab" href="{{ url_for('tv_schedule', day=item.key) }}#timeline" {% if item.key == tab %}aria-current="page"{% endif %}>{{ item.label }}{% if item.custom %}<span class="custom-dot" title="Has its own plan"></span>{% endif %}</a>{% endfor %}
+</nav>
+
+<section class="card timeline-card" id="timeline" aria-label="Timeline of {{ day_name }}" data-timeline>
+  {{ card_notes('timeline', errors.get('timeline')) }}
+  {{ starter_undo(tab, editable and not timeline.lanes) }}
+  {% if installed_apps and not custom_site %}
+  <p class="base-layer"><span class="segment-swatch artwork" aria-hidden="true"></span>Artwork shows when no layout is scheduled.{% if artwork == 'empty' %} No artwork is included yet. <a href="{{ url_for('gallery') }}">Add artwork</a>{% elif artwork == 'off' %} Daily artwork is off, so the TV shows a plain frame. <a href="{{ url_for('household', _anchor='artwork') }}">Turn it on</a>{% endif %}</p>
+  {% endif %}
+  {% if weekday is not none or plan_use %}
+  <div class="day-plan">
+    {% if weekday is none %}
+    <p>{{ plan_use }}</p>
+    {% elif custom %}
+    <p>{{ plan_use }}</p>
+    <div class="day-plan-actions">
+      <a class="button outline sm" href="#copy-plan">Copy to other days…</a>
+      {{ confirm_button('reset-day', "Use Every day's plan", "Remove " ~ day_name ~ "'s own plan? " ~ day_name ~ " will use every day's plan.", 'button outline sm', 'button destructive sm') }}
+      <form id="reset-day" method="post" action="{{ url_for('reset_day', day=tab) }}">{{ version_field() }}</form>
+    </div>
+    {% else %}
+    <p>{{ day_name }} uses every day's plan.</p>
+    <a class="button sm" href="#customize">Customize {{ day_name }}…</a>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <div class="timeline{{ ' readonly' if not editable else '' }}{{ ' has-now' if now_minute is not none else '' }}"{% if now_minute is not none %} data-now="{{ (now_minute / 1440) | round(4) }}"{% endif %}>
+    <div class="lane scale" aria-hidden="true"><span class="lane-name"></span><div class="track">{% for hour in range(0, 25, 3) %}<span class="tick{{ ' minor' if hour % 6 else '' }}{{ ' last' if hour == 24 else '' }}" data-left="{{ (hour / 24 * 100) | round(3) }}">{{ '12 AM' if hour in (0, 24) else '12 PM' if hour == 12 else (hour % 12) ~ (' AM' if hour < 12 else ' PM') }}</span>{% endfor %}</div></div>
+    {% for lane in timeline.lanes %}
+    <div class="lane" data-lane="{{ lane.app }}">
+      <span class="lane-name"><span class="swatch hue-{{ lane.tone }}"></span>{{ lane.name }}{% if lane.missing %} <span class="small">(not installed)</span>{% endif %}</span>
+      <div class="track" data-track>
+        {% for block in lane.blocks %}
+        {% if editable %}<a class="block hue-{{ lane.tone }}" href="#block-{{ block.index }}" data-left="{{ block.left }}" data-width="{{ block.width }}" data-block="{{ block.index }}" data-start="{{ block.start }}" data-end="{{ block.end }}" title="{{ lane.name }}, {{ block.text }}"><span class="handle" data-edge="start"></span><span class="block-text">{{ block.label }}</span><span class="handle" data-edge="end"></span></a>
+        {% else %}<span class="block hue-{{ lane.tone }}" data-left="{{ block.left }}" data-width="{{ block.width }}" title="{{ lane.name }}, {{ block.text }}"><span class="block-text">{{ block.label }}</span></span>{% endif %}
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+    {% if editable and not timeline.lanes %}
+    <div class="lane lane-empty">
+      <span class="lane-name"></span>
+      <div class="empty-start">
+        <p><span class="hint-pointer">Drag a layout onto the day. Overlap two layouts to make them take turns.</span><span class="hint-touch">Select a layout to add it at set times. Add two layouts at the same time to make them take turns.</span> Artwork shows the rest of the day.</p>
+        {{ chips() }}
+        {{ starter_links(tab) }}
+      </div>
+    </div>
+    {% endif %}
+    <div class="lane lane-wake">
+      <span class="lane-name">{{ icon('power') }}Turn-on time</span>
+      <div class="track">
+        {# The sensor's hours, read only: the sensor turns the TV on for people then. Its page changes them. #}
+        {% if cfg.sensor.host and cfg.sensor.enabled %}{% set sensor_title = 'Sensor turns the TV on when someone comes in, ' ~ cfg.sensor.hours_start ~ '–' ~ cfg.sensor.hours_end %}
+        {% set band_start = left(cfg.sensor.hours_start) | float %}{% set band_end = left(cfg.sensor.hours_end) | float %}
+        {% if band_start == band_end %}{% set bands = [(0, 100)] %}{% elif band_start < band_end %}{% set bands = [(band_start, band_end - band_start)] %}{% else %}{% set bands = [(band_start, 100 - band_start), (0, band_end)] %}{% endif %}
+        {% for band in bands %}<a class="sensor-band" href="{{ url_for('sensors.sensor_page', _anchor='away') }}" data-left="{{ band[0] | round(3) }}" data-width="{{ band[1] | round(3) }}" title="{{ sensor_title }}"><span class="sr-only">{{ sensor_title }}</span></a>{% endfor %}
+        {% endif %}
+        {% if wake %}{% set late = " late" if (left(wake) | float) > 85 else "" %}
+        {% if wake_editable %}<a class="wake-pin{{ late }}" href="#wake-form" data-left="{{ left(wake) }}" data-wake="{{ wake }}" title="Turn-on time: {{ clock(wake) }}"><span class="pin-label">{{ clock(wake) }}</span></a>
+        {% else %}<span class="wake-pin{{ late }}" data-left="{{ left(wake) }}"><span class="pin-label">{{ clock(wake) }}</span></span>{% endif %}
+        {% elif wake_editable %}<a class="button ghost sm add-wake" href="#wake-form">{{ icon('plus') }}Add turn-on time</a>
+        {% else %}<span class="small lane-off">Off</span>{% endif %}
+      </div>
+    </div>
+    {% if timeline.strip %}
+    <div class="lane lane-strip">
+      <span class="lane-name">On the TV</span>
+      <div class="track strip">
+        {% for item in timeline.strip %}<span class="segment {{ item.kind }}{% if item.kind == 'one' %} hue-{{ item.tones[0] }}{% endif %}" data-left="{{ item.left }}" data-width="{{ item.width }}"{% if item.kind == 'turns' %} data-a="{{ item.tones[0] }}" data-b="{{ item.tones[1] }}"{% endif %} title="{{ item.when }}: {{ item.text }}"><span class="segment-text">{{ item.text }}</span></span>{% endfor %}
+      </div>
+    </div>
+    {% endif %}
+  </div>
+
+  {% if editable and timeline.lanes %}
+  <div class="app-chips">
+    <p class="small chip-hint"><span class="hint-pointer">Drag a layout onto the day, or select it to pick times.</span><span class="hint-touch">Select a layout to add it at set times.</span></p>
+    {{ chips() }}
+  </div>
+  {% endif %}
+
+  <div class="timeline-footer">
+    <p>Turn-on time: <strong>{{ clock(wake) if wake else 'Off' }}</strong>{% if wake_editable %} · <a href="#wake-form">{{ 'Change' if wake else 'Add' }}</a>{% endif %}</p>
+    {% if cfg.sensor.host and cfg.sensor.enabled %}<p class="small"><span class="sensor-key"></span>Sensor: turns the TV on when someone comes in, {{ cfg.sensor.hours_start }}–{{ cfg.sensor.hours_end }}.{% if cfg.sensor.hours_start != cfg.sensor.hours_end %} After {{ cfg.sensor.hours_end }}, the TV turns off 5 min after the room is empty.{% endif %} <a href="{{ url_for('sensors.sensor_page', _anchor='away') }}">Change</a></p>{% endif %}
+    {% if installed_apps and not custom_site and show_turns %}<p class="small">Where two or more layouts share a time, they take turns every {{ duration(swap_seconds) }}. <a href="#turns">Change</a></p>{% endif %}
+  </div>
+</section>
+
+{% if editable %}
+{% for lane in timeline.lanes %}{% for block in lane.blocks %}{% set id = 'block-' ~ block.index %}
+{% call editor(id, 'Edit ' ~ lane.name ~ ' block', block.text[:1] | upper ~ block.text[1:] ~ ', ' ~ day_name ~ '.') %}
+  <form method="post" action="{{ url_for('save_block', day=tab, index=block.index) }}#{{ id }}" class="stack" data-block-form="{{ block.index }}">
+    {{ version_field() }}
+    <label>Layout<select name="app">{% for item in installed_apps %}<option value="{{ item.id }}" {% if item.id == cards[id].app %}selected{% endif %}>{{ item.name }}</option>{% endfor %}{% if lane.missing %}<option value="{{ lane.app }}" selected>{{ lane.name }} (not installed)</option>{% endif %}</select></label>
+    {{ times(cards[id]) }}
+    <div class="card-footer"><button class="button" type="submit">Save</button>{{ cancel_button() }}{{ remove_button('remove-' ~ id, 'Remove this block?') }}</div>
+  </form>
+  <form id="remove-{{ id }}" method="post" action="{{ url_for('delete_block', day=tab, index=block.index) }}">{{ version_field() }}</form>
+{% endcall %}
+{% endfor %}{% endfor %}
+{% for item in installed_apps %}{% set id = 'add-' ~ item.id %}
+{% call editor(id, 'Add ' ~ item.name, 'Show ' ~ item.name ~ ' at set times, ' ~ day_name ~ '.') %}
+  <form method="post" action="{{ url_for('add_block', day=tab) }}#{{ id }}" class="stack" data-block-form="add" data-app="{{ item.id }}">
+    {{ version_field() }}<input type="hidden" name="app" value="{{ item.id }}">
+    {{ times(cards[id]) }}
+    <div class="card-footer"><button class="button" type="submit">Add</button>{{ cancel_button() }}</div>
+  </form>
+{% endcall %}
+{% endfor %}
+{% endif %}
+{% if weekday is not none and not custom %}
+{% call editor('customize', 'Customize ' ~ day_name, 'Each picked day gets its own plan. It starts as a copy of every day\'s plan. Days with their own plan already keep it.') %}
+  <form method="post" action="{{ url_for('customize_day', day=tab) }}#customize" class="stack">
+    {{ version_field() }}<input type="hidden" name="days_shown" value="1">
+    {{ day_toggle('days', cards.customize.days, 'Days', disabled=own_days) }}
+    <div class="card-footer"><button class="button" type="submit">Customize</button>{{ cancel_button() }}</div>
+  </form>
+{% endcall %}
+{% elif custom %}
+{% call editor('copy-plan', 'Copy ' ~ day_name ~ '\'s plan', 'Each picked day gets a copy of this plan. It replaces the plan the day has now. Each day keeps its own copy. Later changes apply to one day only.') %}
+  <form method="post" action="{{ url_for('copy_day', day=tab) }}#copy-plan" class="stack">
+    {{ version_field() }}
+    {{ day_toggle('days', cards['copy-plan'].days, 'Copy to', disabled=[weekday]) }}
+    <div class="card-footer"><button class="button" type="submit">Copy</button>{{ cancel_button() }}</div>
+  </form>
+{% endcall %}
+{% endif %}
+{% if wake_editable %}
+{% call editor('wake-form', 'Turn-on time', 'Art Frames turns ' ~ cfg.tv_name ~ ' on in Art Mode at this time, ' ~ day_name ~ '.') %}
+  <form method="post" action="{{ url_for('save_wake', day=tab) }}#wake-form" class="stack" data-wake-form>
+    {{ version_field() }}
+    <div class="form-grid time-fields"><label>Turn-on time<input type="time" name="at" step="900" value="{{ cards['wake-form'].at }}" required></label></div>
+    {% if not cfg.tv.mac %}<p class="small">Add this TV's MAC address in <a href="{{ url_for('tv_settings', _anchor='connection') }}">TV settings</a> to turn it on at a set time.</p>{% endif %}
+    <details class="tv-needs"><summary>What the TV needs</summary><p class="small">Turn on Power On with Mobile and IP Remote in the TV's Network, Expert Settings. Use the MAC address of its active wired or Wi-Fi connection. Sleep timers and TV viewing win over the turn-on time.</p></details>
+    <div class="card-footer"><button class="button" type="submit">{{ 'Save' if wake else 'Add' }}</button>{{ cancel_button() }}{% if wake %}{{ remove_button('remove-wake', 'Remove the turn-on time?') }}{% endif %}</div>
+  </form>
+  {% if wake %}<form id="remove-wake" method="post" action="{{ url_for('delete_wake', day=tab) }}">{{ version_field() }}</form>{% endif %}
+{% endcall %}
+{% endif %}
+{% if installed_apps and not custom_site %}
+{% call editor('turns', 'Taking turns', 'Where two or more layouts share a time, they take turns. Pick how often the TV switches. It applies to every day.') %}
+  <form method="post" action="{{ url_for('save_turns') }}#turns" class="stack">
+    {{ version_field() }}<input type="hidden" name="day" value="{{ tab }}">
+    {{ duration_select('swap', 'Switch every', SWITCH_CHOICES, cards.turns.swap or 300, help="The TV shows the next layout's last picture. It does not refresh it.") }}
+    <div class="card-footer"><button class="button" type="submit">Save</button>{{ cancel_button() }}</div>
+  </form>
+{% endcall %}
+{% endif %}
+{% if installed_apps or own_site %}<p class="small schedule-refresh">{% if own_site %}{{ cfg.tv_name }} uses its own website settings, so it refreshes every {{ duration(cfg.site.refresh_minutes * 60) }}. <a href="{{ url_for('household', _anchor='website') }}">Use household settings</a>{% else %}Each layout refreshes every {{ duration(cfg.site.refresh_minutes * 60) }}. <a href="{{ url_for('household', _anchor='refresh') }}">Change it in Household settings</a>{% endif %}</p>{% endif %}
+{% endblock %}

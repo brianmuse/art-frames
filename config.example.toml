@@ -1,0 +1,29 @@
+# Copy to config.local.toml for installation. Never commit credentials.
+# Browser changes are saved in data/settings.json and override this entire snapshot.
+# Timezone names: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+timezone = "UTC"
+[site]
+path = "" # Bundled Astro build; or a relative folder under the sites mount.
+entry = "index.html"
+refresh_minutes = 15
+ready_selector = "" # Optional: [data-dayframe-ready]
+providers = [] # Optional artwork context: ["art"]. Sites own their external data.
+data = {} # Your own JSON-compatible page data, available in /dayframe.json.
+
+[wake]
+grace_minutes = 5 # One event per day, only in this window. No late catch-up wakes.
+# The turn-on times are in the schedule (app_schedule.week), set on the Schedule page. There are none by default.
+# Add one only after testing your particular TV's wake/sleep behaviour. Normal inactivity sleep is respected afterward.
+
+[art]
+enabled = true
+order = "shuffle" # shuffle or sequential
+change_at = "00:00" # Daily selection boundary; never requests a screen wake.
+sources = ["cleveland", "met", "artic"]
+
+[tv]
+ip = "" # Private LAN address, e.g. 192.168.1.50
+mac = "" # Needed only for wake, e.g. AA:BB:CC:DD:EE:FF
+port = 8002 # 8001 or 8002; model and firmware dependent
+timeout_seconds = 8
+broadcast = "255.255.255.255" # Can use your LAN's directed broadcast address.

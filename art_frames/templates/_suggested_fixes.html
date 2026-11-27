@@ -1,0 +1,19 @@
+{# Suggested fixes from analytics.findings(). Shows nothing when there is not enough data.
+   Needs `fixes`; `fixes_link` is the URL of the TV's Picture page, which holds the action anchors.
+   An action with page 'settings' links to this TV's TV settings page, at its anchor if it has one. #}
+{% if fixes %}
+<section class="card suggested-fixes" id="suggested-fixes" aria-labelledby="suggested-fixes-title">
+  <h2 id="suggested-fixes-title">Suggested fixes</h2>
+  <p class="small">Art Frames guesses these from how the TV behaved in the last 14 days. It only reads its own records; it does not contact the TV.</p>
+  {% for fix in fixes %}
+  <article class="suggested-fix" id="fix-{{ fix.id }}" aria-labelledby="fix-{{ fix.id }}-title">
+    <h3 id="fix-{{ fix.id }}-title">{{ fix.title }} {% if fix.kind == 'info' %}<span class="badge info">Information</span>{% elif fix.confidence == 'high' %}<span class="badge warning">Likely</span>{% else %}<span class="badge secondary">Possible</span>{% endif %}</h3>
+    <p>{{ fix.summary }}</p>
+    <p class="small"><strong>Why we think this:</strong> {{ fix.evidence }}</p>
+    {% if fix.steps %}{% if fix.steps_intro %}<p>{{ fix.steps_intro }}</p>{% endif %}<ol>{% for step in fix.steps %}<li>{{ step }}</li>{% endfor %}</ol>{% endif %}
+    {% if fix.note %}<p class="small">{{ fix.note }}</p>{% endif %}
+    {% if fix.action %}<a class="button secondary" href="{% if fix.action.page == 'settings' %}{{ url_for('tv_settings', _anchor=fix.action.get('anchor')) }}{% else %}{{ fixes_link | default('') }}#{{ fix.action.anchor }}{% endif %}">{{ fix.action.label }}</a>{% endif %}
+  </article>
+  {% endfor %}
+</section>
+{% endif %}

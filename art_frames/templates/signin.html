@@ -1,0 +1,38 @@
+<!doctype html>
+{# The sign-in page. It has no page context (web.bare): no TV names, settings or app shell before sign-in. #}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Sign in · Art Frames</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="signin-page">
+  <main class="card signin-card">
+    <h1>Sign in to Art Frames</h1>
+    {% if done == 'everywhere' %}<p role="status" class="alert notice success">You signed out on every device.</p>
+    {% elif done == 'out' %}<p role="status" class="alert notice success">You signed out on this device.</p>{% endif %}
+    {% if error %}<p role="alert" class="alert notice error">{{ error }}</p>{% endif %}
+    {% if mode != 'broken' %}
+    <form method="post" action="{{ url_for('sign_in') }}" class="stack">
+      <input type="hidden" name="form_token" value="{{ form_token }}">
+      <input type="hidden" name="next" value="{{ next }}">
+      <input type="hidden" name="username" value="art-frames" autocomplete="username">
+      <label>Password<input type="password" name="password" autocomplete="current-password" required autofocus></label>
+      <button class="button" type="submit">Sign in</button>
+    </form>
+    <p class="small">This device stays signed in for 30 days after each visit.</p>
+    <details class="small">
+      <summary>Forgot the password?</summary>
+      {% if mode == 'file' %}
+      <p>It is in your Art Frames password file on the server, for example <code>.secrets/web_password</code>.</p>
+      {% else %}
+      <p>Add the setting <code>ART_FRAMES_RESET_PASSWORD=1</code> to Art Frames, then restart it. The log shows a new setup code, and you create a new password. Your TVs and settings stay as they are. Then remove the setting: each start with it resets the password again.</p>
+      {% endif %}
+    </details>
+    {% endif %}
+  </main>
+</body>
+</html>

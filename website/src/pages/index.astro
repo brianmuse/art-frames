@@ -1,0 +1,35 @@
+---
+import Frame from '../layouts/Frame.astro';
+import { pageContext } from '../lib/context';
+const { snapshot, serverRendered, format } = pageContext(Astro.locals);
+const text = (key: string, fallback: string) => typeof snapshot.data?.[key] === 'string' ? snapshot.data[key] : fallback;
+---
+<Frame title="Your own screen" serverRendered={serverRendered}>
+  <main>
+    <header><span>ART FRAMES</span><span id="date">{format({ weekday: 'long', month: 'long', day: 'numeric' })}</span></header>
+    <section><p class="eyebrow" id="eyebrow">{text('eyebrow', 'A space to make your own.')}</p><h1 id="headline">{text('headline', 'A little room\nfor your day.')}</h1><div class="line"></div><p id="message">{text('message', 'Something thoughtful. Something useful. Something you.')}</p></section>
+    <footer><span id="place">{text('place', 'At home.')}</span><span class="sun" aria-hidden="true">◒</span></footer>
+  </main>
+</Frame>
+<style>
+  main { width: 100vw; height: 100vh; padding: 4.7vw; background: radial-gradient(ellipse at 85% 20%, #e3c9a8 0, transparent 50%), linear-gradient(120deg, #f1eee5, #dddccf); }
+  header, footer { display: flex; justify-content: space-between; align-items: center; font-size: 1vw; letter-spacing: .15em; }
+  section { margin-top: 9vh; }
+  .eyebrow { font-size: 1.3vw; color: #6f7c68; }
+  h1 { font-family: Georgia, serif; font-size: 7.6vw; font-weight: 400; line-height: 1.02; letter-spacing: -.055em; margin: 2.2vw 0; white-space: pre-line; }
+  .line { height: .1vw; width: 5.5vw; background: #a27552; margin: 3vw 0; }
+  #message { font-size: 1.3vw; color: #6f786d; }
+  footer { position: absolute; bottom: 4vw; left: 4.7vw; right: 4.7vw; letter-spacing: .02em; }
+  .sun { font-family: Georgia, serif; color: #9a704f; font-size: 4vw; }
+</style>
+<script>
+if (!document.documentElement.dataset.dayframeServerRendered) {
+  const snapshot = await fetch('/dayframe.json').then((response) => response.json());
+  const date = new Date(snapshot.now);
+  const setText = (id: string, value: unknown) => { if (typeof value === 'string') document.getElementById(id)!.textContent = value; };
+  setText('date', date.toLocaleDateString('en-US', { timeZone: snapshot.timezone, weekday: 'long', month: 'long', day: 'numeric' }));
+  for (const key of ['headline', 'message', 'eyebrow', 'place']) setText(key, snapshot.data?.[key]);
+  await document.fonts.ready;
+  document.documentElement.dataset.dayframeReady = 'true';
+}
+</script>

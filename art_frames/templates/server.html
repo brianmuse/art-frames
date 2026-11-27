@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header, card_notes with context %}
+{% block title %}Server{% endblock %}
+{% set crumbs = [('Server', none)] %}
+{% macro card(id, title, description) %}
+<section class="card settings-panel" id="{{ id }}" aria-labelledby="{{ id }}-title">
+  <div class="card-header"><div class="card-title-row"><h2 class="card-title" id="{{ id }}-title">{{ title }}</h2></div>{% if description %}<p class="card-description">{{ description }}</p>{% endif %}</div>
+  {{ card_notes(id, errors.get(id)) }}
+  {{ caller() }}
+</section>
+{% endmacro %}
+{% block content %}
+{{ page_header('Server', 'How you reach Art Frames, your password, updates and backups.') }}
+<div class="settings-sections">
+
+{% call card('address', 'Open on another device', 'Use this address on a phone, tablet or computer on your home network.') %}
+  {% if address.urls %}
+  <div class="address-card">
+    <img class="address-qr" src="{{ url_for('server.address_qr', tv=None) }}" width="132" height="132" alt="QR code for {{ address.qr }}">
+    <div class="stack">
+      <ul class="plain-list address-list">{% for url in address.urls %}<li><a href="{{ url }}"><code>{{ url }}</code></a></li>{% endfor %}</ul>
+      <p class="small">Scan the code with a phone's camera. {% if address.mdns %}If <code>{{ address.mdns }}</code> does not open, use the number address: some networks block .local names.{% endif %}</p>
+    </div>
+  </div>
+  {% elif address.local_only %}
+  <p>Art Frames accepts connections only from the server itself. You use <code>{{ address.here }}</code> now.</p>
+  <p class="small">To open it from other devices, start Art Frames with <code>ART_FRAMES_BIND=0.0.0.0</code>, as the install compose file does. <a href="https://github.com/brianmuse/art-frames/blob/main/docs/hosting.md" target="_blank" rel="noopener noreferrer">Hosting guide ↗</a></p>
+  {% else %}
+  <p>You use <code>{{ address.here }}</code> now.{% if address.loopback %} Other devices use the same address with the server's network address in place of <code>{{ address.host }}</code>.{% else %} Other devices on your network can use it too.{% endif %}</p>
+  <p class="small">Art Frames runs in a Docker bridge network, so it cannot see the server's address or announce <code>art-frames.local</code>. Host networking fixes both.</p>
+  {% endif %}
+{% endcall %}
+
+{% call card('password', 'Password', 'A sign-in lasts 30 days after the last visit on each device.') %}
+  {% if password_mode == 'stored' %}
+  <form method="post" action="{{ url_for('server.change_password') }}#password" class="stack" data-card-form data-card-label="Password"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="username" value="art-frames" autocomplete="username">
+    <div class="form-grid">
+      <label>Current password<input type="password" name="current" autocomplete="current-password" required></label>
+      <label>New password<input type="password" name="password" minlength="{{ minimum }}" autocomplete="new-password" required><small>At least {{ minimum }} characters.</small></label>
+      <label>Type it again<input type="password" name="repeat" minlength="{{ minimum }}" autocomplete="new-password" required></label>
+    </div>
+    <p class="small">A new password signs out every other device.</p>
+    <div class="card-footer"><button class="button" type="submit">Change password</button></div>
+  </form>
+  {% elif password_mode == 'file' %}
+  <p>Your password comes from a file on the server. To change it, change the file, then restart Art Frames.</p>
+  {% else %}
+  <p>The demo has no password.</p>
+  {% endif %}
+{% endcall %}
+
+{% call card('signout', 'Sign out', 'Sign out everywhere ends the sign-in on every phone, tablet and computer, this one too.') %}
+  <div class="card-footer server-signout">
+    <form method="post" action="{{ url_for('sign_out', tv=None) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Sign out</button></form>
+    <form method="post" action="{{ url_for('sign_out_everywhere', tv=None) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Sign out everywhere</button></form>
+  </div>
+{% endcall %}
+
+{% call card('updates', 'Updates', 'Art Frames can tell you when a new version is out. It never updates itself.') %}
+  <form method="post" action="{{ url_for('server.save_updates') }}#updates" class="stack" data-card-form data-card-label="Updates"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="check"><input type="checkbox" class="switch" name="check" {% if updates.enabled %}checked{% endif %} {% if updates.forced %}disabled{% endif %}>Check for updates once a day</label>
+    <p class="small">The check asks GitHub for the newest version number. It sends nothing about you, your TVs or your settings.{% if updates.forced %} <code>ART_FRAMES_UPDATE_CHECK</code> sets this switch.{% endif %}</p>
+    {% if updates.enabled %}
+    <p>{% if updates.available %}<strong>Art Frames {{ updates.latest | replace('v', '', 1) }} is out.</strong> You have {{ updates.current }}. <a href="{{ updates.url }}" target="_blank" rel="noopener noreferrer">What's new ↗</a>
+    {% elif updates.latest %}You have the newest version, {{ updates.current }}.
+    {% elif updates.failed %}The last check could not reach GitHub. Art Frames tries again tomorrow.
+    {% else %}Art Frames checks within an hour.{% endif %}</p>
+    {% endif %}
+    <div class="card-footer">{% if not updates.forced %}<button class="button" type="submit">Save</button>{% endif %}
+      {% if updates.enabled %}<button class="button outline" type="submit" formaction="{{ url_for('server.check_updates') }}#updates">Check now</button>{% endif %}</div>
+  </form>
+{% endcall %}
+
+{% call card('export', 'Export settings', 'Save your settings to a file. Keep it somewhere other than the server.') %}
+  <form method="post" action="{{ url_for('server.export_settings') }}" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <p class="small">The file holds every TV, schedule and layout setting, and the TV IP addresses. It never holds your password or your artwork.</p>
+    <label class="check"><input type="checkbox" name="private">Include private values: TV pairings, sensor keys and layout keys</label>
+    <p class="small">With them, TVs don't ask to pair again. Keep that file as safe as a password.</p>
+    <div class="card-footer"><button class="button outline" type="submit">Download backup</button></div>
+  </form>
+{% endcall %}
+
+{% call card('backup', 'Import settings', 'Bring your settings back from a backup file.') %}
+  <form method="post" action="{{ url_for('server.import_settings') }}#backup" enctype="multipart/form-data" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <label>Backup file<input type="file" name="backup" accept=".zip,application/zip" required></label>
+    <p class="small">Import replaces the settings of every TV. Art Frames keeps a copy of the current settings first.</p>
+    <div class="card-footer"><button class="button outline" type="submit">Import backup</button></div>
+  </form>
+{% endcall %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import page_header, panel_results, card_notes, settings_card, fold_card, advanced_section with context %}
+{% block title %}Picture · {{ cfg.tv_name }}{% endblock %}
+{% set crumbs = [(cfg.tv_name, url_for('tv_overview')), ('Picture', none)] %}
+{% block content %}
+{# An Advanced fold opens while one of its results shows, so the result is in view. #}
+{% set options_open = panel_notes('options') or (job_note and job_note.place == 'options') %}
+{% set testing = panel_notes('power') or panel_notes('standby') or panel_notes('blank') or (job_note and job_note.place in ('power', 'standby', 'blank')) %}
+{% call page_header('Picture', 'How ' ~ cfg.tv_name ~ ' looks in Art Mode.' ~ (' Read ' ~ display_checked ~ '.' if display else '')) %}
+  {% if display %}<form method="post" action="{{ url_for('refresh_display') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Read from TV</button></form>{% endif %}
+{% endcall %}
+  <div class="settings-sections">
+    {% if not display %}
+    {# One empty state instead of a note in every card. #}
+    <section class="card settings-panel empty-state-card" id="unread" aria-labelledby="unread-title">
+      <div class="card-header"><h2 class="card-title" id="unread-title">No settings read yet</h2>
+      <p class="card-description">Turn the TV on in Art Mode, then read its settings. Art Frames never wakes it.</p></div>
+      {{ panel_results('display') }}
+      <form method="post" action="{{ url_for('refresh_display') }}" class="card-footer"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button" type="submit">Read from TV</button></form>
+    </section>
+    {% endif %}
+
+    {# Look: one choice, one Apply, one job. With sensor control on, it sets color and mats only. #}
+    <section class="card settings-panel" id="look" aria-labelledby="look-title">
+      <div class="card-header"><h2 class="card-title" id="look-title">Look</h2>
+      <p class="card-description">{% if sensor_on %}Sets the color temperature and the mats. The sensor sets the brightness.{% else %}Sets the color temperature, the brightness, the TV's light sensor and the mats in one step.{% endif %} The TV must be on in Art Mode.</p></div>
+      {{ panel_results('look') }}
+      <form method="post" action="{{ url_for('apply_look') }}" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <fieldset class="room-choices look-choices"><legend class="sr-only">Look</legend>
+          {% for look in looks %}
+          <label class="room-card{% if not look.usable %} is-disabled{% endif %}"><input type="radio" name="look" value="{{ look.key }}"{% if look.checked %} checked{% endif %}{% if not look.usable %} disabled{% endif %} required>
+            <span class="room-text"><strong>{{ look.name }}</strong><span class="small">{% if not look.usable %}Turn off sensor control first.{% else %}{{ look.line }}{% endif %}</span></span>
+          </label>
+          {% endfor %}
+        </fieldset>
+        {% if display and not look_match %}<p class="small room-custom">Now: <strong>Custom</strong>. The TV's settings match no look.</p>{% endif %}
+        <div class="card-footer"><button class="button" type="submit">Apply</button></div>
+      </form>
+    </section>
+
+    {% call(part) settings_card('mats', 'Mats', 'The border around each artwork on this TV.', url_for('save_mats'), errors.get('mats')) %}
+      {% if part == 'fields' %}
+      <fieldset class="stack"><legend class="sr-only">Mats on {{ cfg.tv_name }}</legend>
+        <label class="check"><input type="radio" name="mats" value="show" {% if mats != 'never' %}checked{% endif %}>Use each artwork's mat</label>
+        <label class="check"><input type="radio" name="mats" value="never" {% if mats == 'never' %}checked{% endif %}>No mats on this TV</label>
+      </fieldset>
+      {% endif %}
+    {% endcall %}
+    <section class="card settings-panel art-display" id="art-display" aria-labelledby="art-display-title">
+      <div class="card-header"><h2 class="card-title" id="art-display-title">Brightness</h2>
+      <p class="card-description">{% if sensor_on %}The sensor sets the brightness from the room light.{% else %}The TV must be on in Art Mode. Art Frames never wakes it.{% endif %}</p></div>
+      {% if display %}{{ panel_results('display') }}{% endif %}
+      {% if sensor_on %}
+      {# The sensor owns the brightness: a change here would pause it for 2 hours, so the page shows it only. #}
+      <dl class="display-details" id="sensor-note">
+        <div><dt>Brightness</dt><dd>{{ display.get('brightness') if display.get('brightness') is not none else 'Not read yet' }}<small>Set by the sensor{% if sensor_lux is not none %} from room light ({{ '%.0f' | format(sensor_lux) if sensor_lux >= 10 else '%.1f' | format(sensor_lux) }} lux){% endif %}.</small></dd></div>
+      </dl>
+      <p class="small">To change it for a while, change it on the TV. The sensor pauses for 2 hours.</p>
+      <div class="card-footer"><a class="button outline" href="{{ url_for('sensors.sensor_page') }}">Sensor settings</a></div>
+      {% else %}
+      {% if display %}
+      <dl class="display-details">
+        <div><dt>Brightness</dt><dd>{{ display.get('brightness') if display.get('brightness') is not none else 'Not reported' }}{% if display.get('min') is not none and display.get('max') is not none %} · range {{ display.get('min') }}–{{ display.get('max') }}{% endif %}</dd></div>
+      </dl>
+      {% endif %}
+      <form method="post" action="{{ url_for('set_brightness') }}" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+        <label>{% if not display %}Level<small>The TV's range appears after Read from TV.</small>{% elif display.get('min') is not none or display.get('max') is not none %}Level ({{ brightness_range[0] }} to {{ brightness_range[1] }}){% else %}Level ({{ brightness_range[0] }} to {{ brightness_range[1] }})<small>The TV reports no range, so Art Frames allows {{ brightness_range[0] }} to {{ brightness_range[1] }}.</small>{% endif %}<input type="number" name="brightness" min="{{ brightness_range[0] }}" max="{{ brightness_range[1] }}" step="1" value="{{ display.get('brightness') if display.get('brightness') is not none else '' }}" required></label>
+        <div class="card-footer"><button class="button outline" type="submit">Save</button></div>
+      </form>
+      {% endif %}
+    </section>
+
+    {% call advanced_section() %}
+    {% call fold_card('picture-settings', 'More picture settings', 'TV light sensor, Sleep After, motion sensitivity, color temperature and every Art Mode setting', open=options_open, action_label='Show', remember=true) %}
+      {% include '_art_mode_options.html' %}
+    {% endcall %}
+    {% call fold_card('tv-details', 'TV details', 'Model, firmware and Art Mode API', action_label='Show', remember=true) %}
+      {% set unread = 'Not read yet' if not display else 'Not reported' %}
+      <dl class="display-details">
+        {% set about = display.get('about') or {} %}
+        <div><dt>Model</dt><dd>{% if about.get('model_name') or about.get('model_code') %}{{ about.get('model_name') }}{% if about.get('model_code') %} ({{ about.get('model_code') }}){% endif %}{% else %}{{ unread }}{% endif %}</dd></div>
+        <div><dt>Firmware</dt><dd>{{ about.get('firmware') or unread }}{% if about and (about.get('firmware') or 'unknown')|lower == 'unknown' %}<small>On the TV, open Settings → Support → About This TV.</small>{% endif %}</dd></div>
+        <div><dt>Art Mode API</dt><dd>{{ about.get('art_api') or unread }}</dd></div>
+      </dl>
+    {% endcall %}
+    {% call fold_card('tests', 'Tests', 'Screen power, soft blank and standby image, for checking a TV', open=testing, action_label='Show', remember=true, extra_class='picture-tests') %}
+    <section class="fold-section screen-test" id="screen-power" aria-labelledby="screen-power-title">
+      <h3 class="fold-section-title" id="screen-power-title">Screen power</h3>
+      <p class="alert warning"><strong>Warning:</strong> These buttons turn the TV's screen off and on. Use them only while testing.</p>
+      {{ panel_results('power') }}
+      <p class="small">Try the power-off key sends the TV's power-off key once, in Art Mode only. Turn screen on works only when the TV is off or does not answer, and can take 60 seconds. Neither runs from 10 minutes before the turn-on time until it is done.</p>
+      <div class="card-footer">
+        <form method="post" action="{{ url_for('screen_off') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Try the power-off key</button></form>
+        <form method="post" action="{{ url_for('check_screen') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Read TV power</button></form>
+        <form method="post" action="{{ url_for('screen_on') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Turn screen on</button></form>
+      </div>
+    </section>
+    <section class="fold-section screen-test" id="soft-blank" aria-labelledby="soft-blank-title">
+      <h3 class="fold-section-title" id="soft-blank-title">Soft blank</h3>
+      {{ panel_results('blank') }}
+      <p class="small">Shows a black image at the lowest brightness, in Art Mode only. Undo blank puts the picture and brightness back.</p>
+      {% if blanked %}<p class="small"><strong>Screen blanked since {{ blanked_since or 'an unknown time' }}.</strong></p>{% endif %}
+      <div class="card-footer">
+        <form method="post" action="{{ url_for('soft_blank') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Blank the screen</button></form>
+        <form method="post" action="{{ url_for('undo_blank') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Undo blank</button></form>
+      </div>
+    </section>
+    <section class="fold-section screen-test" id="standby-test" aria-labelledby="standby-test-title">
+      <h3 class="fold-section-title" id="standby-test-title">Standby image test</h3>
+      {{ panel_results('standby') }}
+      <p class="small">Checks if the TV takes a new image while its screen is off. It never turns the screen on or sends a key.</p>
+      {% if standby_test %}
+      <dl class="display-details">
+        <div><dt>Art channel answered</dt><dd>{{ {True: 'Yes', False: 'No'}.get(standby_test.get('answered'), 'Not reported') }}</dd></div>
+        <div><dt>Upload</dt><dd>{{ {True: 'Worked', False: 'Failed'}.get(standby_test.get('uploaded'), 'Not tried') }}</dd></div>
+        <div><dt>Image selected</dt><dd>{{ {'sent': 'Yes', 'no-reply': 'Not confirmed', 'skipped': 'No, the TV left standby'}.get(standby_test.get('selected'), 'Not tried') }}</dd></div>
+        <div><dt>Stayed in standby</dt><dd>{{ {True: 'Yes', False: 'No'}.get(standby_test.get('stayed'), 'Not reported') }}</dd></div>
+        <div><dt>Time</dt><dd>{{ '%.0f'|format(standby_test.get('seconds') or 0) }} seconds</dd></div>
+      </dl>
+      <p class="small">Tested {{ standby_checked }}.</p>{% endif %}
+      <div class="card-footer">
+        <form method="post" action="{{ url_for('standby_load') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Test: load the next image in standby</button></form>
+      </div>
+    </section>
+    {% endcall %}
+    {% endcall %}
+  </div>
+{% endblock %}

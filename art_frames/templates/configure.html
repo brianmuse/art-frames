@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import page_header, status_dot, panel_results, card_notes, card_form, settings_card, fold_card, advanced_section, advanced_row with context %}
+{% block title %}TV settings · {{ cfg.tv_name }}{% endblock %}
+{% set crumbs = [(cfg.tv_name, url_for('tv_overview')), ('TV settings', none)] %}
+{% block content %}
+{{ page_header('TV settings', 'The name of ' ~ cfg.tv_name ~ ', its pairing and how Art Frames reaches it.') }}
+{# Old links to sections that moved to other pages; app.js [data-hash-moves] follows them. #}
+<div hidden data-hash-moves='{{ hash_moves | tojson }}'></div>
+{% set paired = demo or status.get('paired') %}
+{# The Address fold opens when the address is missing, after an error, or while a search or its result shows. #}
+{% set address_open = not cfg.tv.ip or connection_error or panel_notes('card-connection') or address_searching or (address_search and address_search.proposal) or panel_notes('recovery') or (job_note and job_note.place == 'recovery') %}
+<div class="settings-sections">
+{% call(part) settings_card('name', 'Name', 'The name Art Frames uses for this TV on every page.', url_for('save_tv_settings'), name_error) %}
+  {% if part == 'fields' %}
+  <label>Name<input name="tv_name" value="{{ values.tv_name }}" required maxlength="60"></label>
+  {% endif %}
+{% endcall %}
+<section class="card settings-panel" id="pairing" aria-labelledby="pairing-title">
+  <div class="card-header"><h2 class="card-title" id="pairing-title">Pairing</h2><p class="card-description">{% if paired %}Pair again only if the TV forgot Art Frames. Keep the TV on, then select Allow on its screen.{% else %}Keep the TV on, then select Allow on its screen.{% endif %}</p></div>
+  <dl class="display-details"><div><dt>Status</dt><dd>{{ status_dot({'word': 'Paired', 'tone': 'done'} if paired else tv_state(status, demo)) }}</dd></div></dl>
+  <div class="card-footer"><button class="button{% if paired %} outline{% endif %}" type="submit" form="pair-tv"{% if not cfg.tv.ip %} disabled{% endif %}>{{ 'Pair again' if paired else 'Pair TV' }}</button>{% if not cfg.tv.ip %}<span class="small">Save the TV's address first. Add it under Address below.</span>{% endif %}<a class="button ghost" href="{{ url_for('tv_setup') }}">Guided setup</a></div>
+</section>
+{% include '_sensor_card.html' %}
+<p class="small settings-moved">The schedule and turn-on time are on <a href="{{ url_for('tv_schedule') }}">Schedule</a>. Mats and brightness are on <a href="{{ url_for('tv_picture') }}">Picture</a>. The sensor has its own page: <a href="{{ url_for('sensors.sensor_page') }}">Sensor</a>. The timezone and daily artwork are in <a href="{{ url_for('household') }}">Household settings</a>.</p>
+
+{# The Address fold: under Advanced once the TV has an address, above it while the address is missing. #}
+{% macro address_fold() %}
+{% call fold_card('connection', 'Address', ('Address: ' ~ cfg.tv.ip ~ ' · ' ~ ('MAC set' if cfg.tv.mac else 'no MAC')) if cfg.tv.ip else 'No address yet', open=address_open, action_label='Show', remember=true) %}
+  <section class="fold-section" id="address" aria-labelledby="address-title">
+    <h3 class="fold-section-title" id="address-title">IP and MAC address</h3>
+    <p class="small">How Art Frames finds this TV on your network.</p>
+    {{ card_notes('connection', connection_error) }}
+    {% call card_form('connection', url_for('save_tv_settings'), 'Address') %}
+      <details {% if not cfg.tv.ip %}open{% endif %}><summary>Find TVs on your network</summary>{% include '_tv_discovery.html' %}</details>
+      <label>IP address<input name="tv_ip" value="{{ values.tv_ip }}" placeholder="192.168.1.50"><input type="hidden" name="tv_ip_shown" value="{{ cfg.tv.ip }}">{% if address_searching %}<small>Searching for this TV…</small>{% elif address_search and address_search.proposal %}<small>Art Frames found a new address. See <a href="#address-recovery">Address recovery</a>.</small>{% endif %}</label>
+      {# The MAC and the wake broadcast in one row. Its #connection-advanced anchor (a plan's turn-on note)
+         opens the Address fold and this row. #}
+      {% call advanced_row('connection-advanced', (1 if values.tv_mac else 0) + (1 if values.broadcast != '255.255.255.255' else 0), open=connection_error != '', label='MAC and wake') %}
+      <label>MAC address<input name="tv_mac" value="{{ values.tv_mac }}" placeholder="AA:BB:CC:DD:EE:FF"><small>Needed to turn the TV on at a set time. Find TVs fills it in.</small></label>
+      <label>Wake broadcast address<input name="broadcast" value="{{ values.broadcast }}" required><small>Change it only if the TV does not turn on at its set time.</small></label>
+      {% endcall %}
+      <div class="card-footer"><button class="button outline" type="submit">Save</button></div>
+    {% endcall %}
+  </section>
+  <section class="fold-section" id="address-recovery" aria-labelledby="address-recovery-title">
+    <h3 class="fold-section-title" id="address-recovery-title">Address recovery</h3>
+    <p class="small">If the TV's address changed, Art Frames can search your network for its MAC address.</p>
+    {{ panel_results('recovery') }}
+    {% if address_searching %}<p class="small">Searching for this TV…</p>{% elif address_search %}<p class="small">Last address search{% if address_search.time %}, {{ address_search.time }}{% endif %}: {{ address_search.text }}</p>{% else %}<p class="small">No address search yet.</p>{% endif %}
+    {% if address_search and address_search.proposal and not address_searching %}<div class="card-footer"><button class="button" form="tv-address" name="action" value="use">Use this address</button><button class="button outline" form="tv-address" name="action" value="keep">Keep the saved address</button></div>
+    {% elif cfg.tv.ip and cfg.tv.mac and not demo %}<div class="card-footer"><button class="button outline" form="find-tv" {% if address_searching %}disabled{% endif %}>Find this TV</button><span class="small">Searches your network for this TV’s MAC address if its address changed.</span></div>
+    {% elif demo %}<p class="small">Finding a TV is unavailable in demo mode.</p>
+    {% else %}<p class="small">Save the TV's IP and MAC address to use address recovery.</p>{% endif %}
+  </section>
+{% endcall %}
+{% endmacro %}
+{% if cfg.tv.ip %}
+{% call advanced_section('Address and recovery. Change these only if the TV moved.') %}
+{{ address_fold() }}
+{% endcall %}
+{% else %}
+{{ address_fold() }}
+{% endif %}
+</div>
+{% if address_search and address_search.proposal %}<form id="tv-address" method="post" action="{{ url_for('tv_address') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="ip" value="{{ address_search.proposal }}"></form>{% endif %}
+<form id="find-tv" method="post" action="{{ url_for('find_tv') }}"><input type="hidden" name="csrf" value="{{ csrf }}"></form>
+<form id="pair-tv" method="post" action="{{ url_for('pair') }}"><input type="hidden" name="csrf" value="{{ csrf }}"></form>
+{% endblock %}

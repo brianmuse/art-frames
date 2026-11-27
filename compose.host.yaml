@@ -1,0 +1,25 @@
+# Optional Linux/Synology deployment for LAN Wake-on-LAN broadcasts.
+# Use: docker compose -f compose.host.yaml up --build -d
+services:
+  dayframe:
+    pids_limit: 64
+    extends:
+      file: compose.base.yaml
+      service: dayframe
+    network_mode: host
+    environment:
+      # Loopback only, unless DAYFRAME_LISTEN in .env opens it to the home network.
+      DAYFRAME_BIND: "${DAYFRAME_LISTEN:-127.0.0.1}"
+    depends_on: [renderer]
+
+  renderer:
+    extends:
+      file: compose.base.yaml
+      service: renderer
+
+secrets:
+  web_password:
+    file: ./.secrets/web_password
+
+volumes:
+  render-ipc:

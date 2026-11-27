@@ -1,0 +1,34 @@
+# HTML/CSS renderer, without JavaScript. Suitable for NAS kernels lacking seccomp.
+services:
+  dayframe:
+    extends:
+      file: compose.base.yaml
+      service: dayframe
+    build:
+      context: .
+      args:
+        DAYFRAME_BUNDLED_SITE: none # The website service supplies the default site.
+    # Publish on host loopback only, unless DAYFRAME_LISTEN in .env opens it to the home network.
+    ports:
+      - "${DAYFRAME_LISTEN:-127.0.0.1}:${DAYFRAME_PORT:-8765}:8765"
+    environment:
+      DAYFRAME_BIND: 0.0.0.0
+      DAYFRAME_PORT: 8765
+      DAYFRAME_DEFAULT_SITE_SOCKET: /run/dayframe-site/site.sock
+    volumes:
+      - site-ipc:/run/dayframe-site:ro
+    depends_on: [renderer, website]
+  renderer:
+    extends:
+      file: compose.base.yaml
+      service: static-renderer
+  website:
+    extends:
+      file: compose.base.yaml
+      service: website
+secrets:
+  web_password:
+    file: ./.secrets/web_password
+volumes:
+  render-ipc:
+  site-ipc:

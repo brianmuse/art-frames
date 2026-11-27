@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header %}
+{% block title %}Find art{% endblock %}
+{% set crumbs = [('Artwork', url_for('gallery')), ('Find art', none)] %}
+{% block content %}
+{{ page_header('Artwork', 'Search public-domain museum collections. Works you add go to your artwork.') }}
+<nav class="tabs underline page-tabs" aria-label="Artwork"><a class="tab" href="{{ url_for('gallery') }}">Your artwork</a><a class="tab" href="{{ url_for('discover') }}" aria-current="page">Find art</a></nav>
+<form method="get" class="card search-bar">
+  <input type="hidden" name="tv" value="{{ screen_id }}">
+  <label><span class="sr-only">Search artwork</span><input type="search" name="q" value="{{ query }}" placeholder="Monet, water lilies, a favorite place…" maxlength="120" required></label>
+  <label><span class="sr-only">Museum collection</span><select name="source">{% for key in cfg.art.sources %}<option value="{{ key }}" {% if key == source %}selected{% endif %}>{{ providers[key] }}</option>{% endfor %}</select></label>
+  <button class="button" type="submit">Search</button>
+  <label class="check full"><input type="checkbox" name="artist" value="1" {% if artist %}checked{% endif %}> Search artist names only</label>
+</form>
+{% if more_collections %}<p class="result-note">More collections are available. <a href="{{ url_for('household', _anchor='museum-sources') }}">Turn on more museums in Household settings</a></p>{% endif %}
+{% if unavailable %}
+  <section class="card empty-state"><span class="empty-state-icon">{{ icon('search') }}</span><h2>Collection temporarily unavailable.</h2><p>{{ unavailable }} Your saved artwork is still available.</p><p>Try another enabled collection, or <a href="{{ collection_url }}" target="_blank" rel="noopener noreferrer">browse this museum directly ↗</a> and upload a downloaded image in <a href="{{ url_for('gallery') }}">your collection</a>.</p></section>
+{% elif results %}
+  <p class="result-note">{{ providers[source] }} · page {{ page }} · public-domain images</p>
+  <div class="gallery-grid">{% for art in results %}<article class="card art-card"><div class="discovery-image"><img src="{{ art.thumb }}" alt="{{ art.title }}" loading="lazy" referrerpolicy="no-referrer"></div><div class="art-info"><p class="eyebrow">{{ art.year }}</p><h2>{{ art.title }}</h2><p>{{ art.artist }}</p><form method="post" action="{{ url_for('import_image') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="source" value="{{ art.source }}"><input type="hidden" name="source_id" value="{{ art.source_id }}"><button class="text-button" type="submit">Add to collection</button></form><p class="rights">{{ art.rights }} · <a href="{{ art.source_url }}" target="_blank" rel="noopener noreferrer">Museum record ↗</a></p></div></article>{% endfor %}</div>
+{% elif query %}
+  <section class="card empty-state"><span class="empty-state-icon">{{ icon('search') }}</span><h2>No free images on this page.</h2><p>Try the next page, another museum, or another search.</p></section>
+{% else %}
+  <section class="discovery-intro"><h2>Search by artist or title</h2><div class="suggestions">{% for term in ['Monet','landscape','Hokusai','flowers'] %}<a class="button outline sm" href="{{ url_for('discover', source=source, q=term, artist='1' if term in ['Monet','Hokusai'] else '0') }}">{{ term }}</a>{% endfor %}</div><p class="small">Selected works are downloaded to your own library. Source and public-domain information stay with every piece.</p></section>
+{% endif %}
+{% if query and not unavailable %}<nav class="pagination" aria-label="Search pages">{% if page > 1 %}<a class="button outline" href="{{ url_for('discover', source=source, q=query, page=page-1, artist='1' if artist else '0') }}">← Previous</a>{% endif %}{% if has_more and page < 100 %}<a class="button outline" href="{{ url_for('discover', source=source, q=query, page=page+1, artist='1' if artist else '0') }}">Next page →</a>{% endif %}</nav>{% endif %}
+{% endblock %}

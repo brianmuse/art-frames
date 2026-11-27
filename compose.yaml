@@ -1,0 +1,26 @@
+services:
+  dayframe:
+    pids_limit: 64
+    extends:
+      file: compose.base.yaml
+      service: dayframe
+    # Bind inside the isolated container. Publish on host loopback only,
+    # unless DAYFRAME_LISTEN in .env opens it to the home network.
+    ports:
+      - "${DAYFRAME_LISTEN:-127.0.0.1}:${DAYFRAME_PORT:-8765}:8765"
+    environment:
+      DAYFRAME_BIND: 0.0.0.0
+      DAYFRAME_PORT: 8765
+    depends_on: [renderer]
+
+  renderer:
+    extends:
+      file: compose.base.yaml
+      service: renderer
+
+secrets:
+  web_password:
+    file: ./.secrets/web_password
+
+volumes:
+  render-ipc:

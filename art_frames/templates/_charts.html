@@ -1,0 +1,87 @@
+{# The charts of one TV's Health page (analytics_web.chart_context). No script runs. #}
+{% from '_ui.html' import icon %}
+{% if report.unreadable %}
+<section class="card empty-state">
+  <span class="empty-state-icon">{{ icon('insights') }}</span>
+  <h2>Analytics data could not be read</h2>
+  <p>The analytics file for this TV is damaged or busy. Your TV and its images are not affected. Try again later.</p>
+</section>
+{% elif report.empty %}
+<section class="card empty-state">
+  <span class="empty-state-icon">{{ icon('insights') }}</span>
+  <h2>No data yet</h2>
+  <p>{% if report.started %}Art Frames started collecting on {{ report.started.strftime('%B %-d, %Y') }}. {% else %}Art Frames starts collecting when it next checks this TV. {% endif %}Charts fill in as samples arrive.</p>
+</section>
+{% else %}
+<svg class="sr-only" width="0" height="0" aria-hidden="true" focusable="false"><defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect class="hatch-ground" width="6" height="6"/><line class="hatch-line" x1="0" y1="0" x2="0" y2="6"/></pattern></defs></svg>
+{% if report.started and report.started.timestamp() > report.start %}<p class="small analytics-note">Art Frames started collecting on {{ report.started.strftime('%B %-d, %Y') }}. Charts fill in as samples arrive.</p>{% endif %}
+<section class="stat-row" aria-label="Summary">
+  <div class="card stat"><p class="stat-label">Art Mode</p><p class="stat-value">{{ hours(report.per_day.awake) }}</p><p class="small">per day, based on {{ amount }} of data</p></div>
+  <div class="card stat"><p class="stat-label">Watching TV</p><p class="stat-value">{{ hours(report.per_day.playing) }}</p><p class="small">per day, based on {{ amount }} of data</p></div>
+  <div class="card stat"><p class="stat-label">Standby</p><p class="stat-value">{{ hours(report.per_day.standby) }}</p><p class="small">per day, based on {{ amount }} of data</p></div>
+  <div class="card stat"><p class="stat-label">Off (deep standby)</p><p class="stat-value">{{ hours(report.per_day.deep) }}</p><p class="small">per day; the TV did not answer</p></div>
+  <div class="card stat"><p class="stat-label">TV answered checks</p><p class="stat-value">{% if report.samples %}{{ (100 * report.answered / report.samples) | round | int }}%{% else %}—{% endif %}</p><p class="small">{{ report.answered }} of {{ report.samples }} samples</p></div>
+  <div class="card stat"><p class="stat-label">Median brightness</p><p class="stat-value">{{ report.brightness_median if report.brightness_median is not none else '—' }}</p><p class="small">Measured only in Art Mode</p></div>
+</section>
+
+
+<section class="card chart-card">
+  <h2>Time by state each day</h2>
+  <p class="small">Hours in each state. Art Frames records each change of state, so the hours are exact. Off (deep standby): did not answer on the network. Usually deep standby; also shown if the TV is unplugged or its address changed. Unknown means the TV never answered, answered without a clear state, is not paired, or Art Frames was not running.</p>
+  <ul class="chart-legend">{% for state, label in labels.items() %}<li><svg width="12" height="12" aria-hidden="true"><rect class="fill-{{ state }}" width="12" height="12" rx="2"/></svg>{{ label }}</li>{% endfor %}</ul>
+  <div class="chart-grid">
+    <svg class="chart-axis" width="40" height="{{ bars.height + 24 }}" aria-hidden="true">{% for line in bars.grid %}<text x="34" y="{{ line.y + 4 }}" text-anchor="end">{{ line.label }}</text>{% endfor %}</svg>
+    <svg class="chart-plot" width="100%" height="{{ bars.height + 24 }}" role="img" aria-label="Stacked bars of hours in each state, one bar per day. Per day, on average: Art Mode {{ hours(report.per_day.awake) }}, watching TV {{ hours(report.per_day.playing) }}, standby {{ hours(report.per_day.standby) }}, off in deep standby {{ hours(report.per_day.deep) }}. The table below lists each day.">
+      {% for line in bars.grid %}<line class="{{ 'baseline' if loop.first else 'gridline' }}" x1="0" x2="100%" y1="{{ line.y }}" y2="{{ line.y }}"/>{% endfor %}
+      {% set bar = bars.bar %}{% for column in bars.columns %}<svg x="{{ column.slot_x }}%" width="{{ column.slot }}%" height="{{ bars.height }}" overflow="visible"><g transform="translate({{ bar.shift }} 0)">{% for segment in column.segments %}<rect class="fill-{{ segment.state }}" x="{{ bar.x }}" y="{{ segment.y }}" width="{{ bar.width }}" height="{{ segment.height }}" {% if segment.last %}rx="4"{% endif %}/>{% if segment.last and segment.height > 8 %}<rect class="fill-{{ segment.state }}" x="{{ bar.x }}" y="{{ segment.y + segment.height / 2 }}" width="{{ bar.width }}" height="{{ segment.height / 2 }}"/>{% endif %}{% endfor %}</g><rect class="hit" width="100%" height="{{ bars.height }}"><title>{{ column.title }}</title></rect></svg>{% endfor %}
+      {% for tick in bars.ticks %}<text class="tick" x="{{ tick.x }}%" y="{{ bars.height + 18 }}" text-anchor="{{ 'start' if loop.first and loop.length > 1 else 'end' if loop.last and loop.length > 1 else 'middle' }}">{{ tick.label }}</text>{% endfor %}
+    </svg>
+  </div>
+  <details class="table-view"><summary>Show as a table</summary><div class="table-scroll"><table class="table settings-table"><thead><tr><th>Day</th>{% for label in labels.values() %}<th>{{ label }}</th>{% endfor %}</tr></thead><tbody>{% for row in report.daily %}<tr><td>{{ day(row.date) }}</td>{% for state in labels %}<td>{{ ('%.1f h' | format(row[state])) if row.collected else '—' }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div><p class="small">— means Art Frames was not collecting yet.</p></details>
+</section>
+
+<section class="card chart-card">
+  <h2>When the TV is in Art Mode</h2>
+  <p class="small">Average minutes of Art Mode in each hour, by day of the week. Darker means more.</p>
+  <ul class="chart-legend">{% for label, css in heat_legend %}<li><svg width="12" height="12" aria-hidden="true"><rect class="{{ css }}" width="12" height="12" rx="2"/></svg>{{ label }}</li>{% endfor %}</ul>
+  <div class="chart-grid">
+    <svg class="chart-axis" width="40" height="{{ heat.height + 24 }}" aria-hidden="true">{% for row in heat.rows %}<text x="34" y="{{ row.y + 14 }}" text-anchor="end">{{ row.name }}</text>{% endfor %}</svg>
+    <svg class="chart-plot" width="100%" height="{{ heat.height + 24 }}" role="img" aria-label="Heatmap of average minutes of Art Mode in each hour, by day of the week. The table below lists every hour.">
+      {% for row in heat.rows %}{% for cell in row.cells %}<rect class="heat-cell {{ cell.class }}" x="{{ cell.x }}%" y="{{ row.y }}" width="{{ heat.width }}%" height="{{ heat.cell }}"><title>{{ cell.title }}</title></rect>{% endfor %}{% endfor %}
+      {% for tick in heat.ticks %}<text class="tick" x="{{ tick.x }}%" y="{{ heat.height + 18 }}">{{ tick.label }}</text>{% endfor %}
+    </svg>
+  </div>
+  <details class="table-view"><summary>Show as a table</summary><div class="table-scroll"><table class="table settings-table"><caption class="sr-only">Average minutes of Art Mode per hour</caption><thead><tr><th>Hour</th>{% for name in days_of_week %}<th>{{ name }}</th>{% endfor %}</tr></thead><tbody>{% for row in heat.table %}<tr><td>{{ row.hour }}</td>{% for minutes in row.cells %}<td>{{ (minutes ~ ' min') if minutes is not none else '—' }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div></details>
+</section>
+
+<section class="card chart-card">
+  <h2>Brightness</h2>
+  <p class="small">Art Mode brightness from each sample. The TV reports it only in Art Mode, so the line has gaps.</p>
+  <ul class="chart-legend"><li><svg width="16" height="12" aria-hidden="true"><line class="line-brightness" x1="0" x2="16" y1="6" y2="6"/></svg>Brightness</li><li><svg width="12" height="12" aria-hidden="true"><rect class="sensor-band" width="12" height="12" rx="2"/></svg>Light sensor on</li></ul>
+  {% if line.marks %}
+  {% if line.zoomed %}<p class="small">Less than a day of readings. The chart shows only the hours with data.</p>{% endif %}
+  <div class="chart-grid">
+    <svg class="chart-axis" width="40" height="{{ line.height + 24 }}" aria-hidden="true">{% for grid in line.grid %}<text x="34" y="{{ grid.y + 4 }}" text-anchor="end">{{ grid.label }}</text>{% endfor %}</svg>
+    <svg class="chart-plot" width="100%" height="{{ line.height + 24 }}" role="img" aria-label="Line of Art Mode brightness over time, with shading while the light sensor is on. Median brightness {{ report.brightness_median }}. The table below lists each day.">
+      {% for band in line.bands %}<rect class="sensor-band" x="{{ band.x }}%" y="0" width="{{ band.width }}%" height="{{ line.height }}"/>{% endfor %}
+      {% for grid in line.grid %}<line class="{{ 'baseline' if loop.first else 'gridline' }}" x1="0" x2="100%" y1="{{ grid.y }}" y2="{{ grid.y }}"/>{% endfor %}
+      {% for segment in line.segments %}<line class="line-brightness" x1="{{ segment.x1 }}%" y1="{{ segment.y1 }}" x2="{{ segment.x2 }}%" y2="{{ segment.y2 }}"/>{% endfor %}
+      {% for mark in line.marks %}{% if line.dots %}<circle class="dot-brightness" cx="{{ mark.x }}%" cy="{{ mark.y }}" r="4"/>{% endif %}<circle class="hit" cx="{{ mark.x }}%" cy="{{ mark.y }}" r="12"><title>{{ mark.title }}</title></circle>{% endfor %}
+      {% for tick in line.ticks %}<text class="tick" x="{{ tick.x }}%" y="{{ line.height + 18 }}" text-anchor="{{ tick.anchor }}">{{ tick.label }}</text>{% endfor %}
+    </svg>
+  </div>
+  <details class="table-view"><summary>Show as a table</summary><div class="table-scroll"><table class="table settings-table"><thead><tr><th>Day</th><th>Lowest</th><th>Median</th><th>Highest</th></tr></thead><tbody>{% for row in report.brightness_days %}<tr><td>{{ day(row.date) }}</td><td>{{ row.low }}</td><td>{{ row.median }}</td><td>{{ row.high }}</td></tr>{% endfor %}</tbody></table></div></details>
+  {% if line.changes %}<details class="table-view"><summary>Light sensor changes</summary><ul class="plain-list">{% for change in line.changes %}<li>{{ change }}</li>{% endfor %}</ul></details>{% endif %}
+  {% else %}<p class="chart-empty">No brightness readings in this range. The TV must be in Art Mode during a sample.</p>{% endif %}
+</section>
+
+<section class="card chart-card">
+  <h2>Reliability</h2>
+  <dl class="display-details">
+    <div><dt>Scheduled wakes confirmed</dt><dd>{% if report.wakes %}{{ report.wakes_confirmed }} of {{ report.wakes }} ({{ (100 * report.wakes_confirmed / report.wakes) | round | int }}%){% if report.wakes_late %} · {{ report.wakes_late }} reached Art Mode later{% endif %}{% else %}No scheduled wakes yet{% endif %}</dd></div>
+    <div><dt>Time to send an image, median</dt><dd>{{ '%.1f s' | format(report.latency_median / 1000) if report.latency_median is not none else '—' }}</dd></div>
+    <div><dt>Time to send an image, slowest 10%</dt><dd>{{ '%.1f s or more' | format(report.latency_p90 / 1000) if report.latency_p90 is not none else '—' }}</dd></div>
+    <div><dt>Images sent</dt><dd>{{ report.deliveries.published }} shown · {{ report.deliveries.unconfirmed }} not confirmed · {{ report.delivery_failures }} failed</dd></div>
+  </dl>
+</section>
+{% endif %}

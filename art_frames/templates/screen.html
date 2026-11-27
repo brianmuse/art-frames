@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header, status_dot, show_now, hold_banner, health_line with context %}
+{% block title %}{{ cfg.tv_name }}{% endblock %}
+{% set crumbs = [(cfg.tv_name, url_for('tv_overview')), ('Now', none)] %}
+{% set state = tv_state(status, demo) %}
+{% block content %}
+{# One status sentence: what the TV shows, or what the sensor did to the screen (sensor_web.now_status). #}
+{% set said = screen_status.sentence %}
+{% if said and (screen_status.overlay or said[:1].isupper()) %}{% set headline = said %}
+{% else %}{% set headline = (('Showing ' ~ now.on_tv.app) if now.on_tv and now.on_tv.app else 'Art Mode') ~ ((' · ' ~ said) if said else '') %}{% endif %}
+{% set headline = ('Demo · ' if demo else '') ~ headline %}
+{% call page_header(cfg.tv_name, headline ~ (' · checked ' ~ now.checked if now.checked else ' · not checked yet')) %}
+  {{ show_now(now.show, preview=url_for('tv_overview', preview=1)) }}
+  <details class="dropdown more-menu" data-menu>
+    <summary class="button outline icon" title="More">{{ icon('more') }}<span class="sr-only">More actions</span></summary>
+    <div class="dropdown-content">
+      <form method="post" action="{{ url_for('check_tv') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="dropdown-item" type="submit">{{ icon('search') }}<span>Check TV</span></button></form>
+      {% if cfg.tv.mac %}<form method="post" action="{{ url_for('wake_now') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="dropdown-item" type="submit">{{ icon('power') }}<span>Turn on now</span></button></form>{% endif %}
+      <a class="dropdown-item" href="{{ url_for('tv_overview', preview=1) }}" data-open-dialog="preview-dialog">{{ icon('display') }}<span>Preview first…</span></a>
+      {% if not demo and not status.get('paired') %}<a class="dropdown-item" href="{{ url_for('tv_settings', _anchor='pairing') }}">{{ icon('tv') }}<span>Pair TV</span></a>{% endif %}
+      <p class="dropdown-note small">Check TV asks the TV what it shows. It never wakes the TV.</p>
+    </div>
+  </details>
+{% endcall %}
+{{ hold_banner(now.hold, screen_id) }}
+{% if not demo and not status.get('paired') %}<div class="alert banner" role="status">{{ icon('tv') }}<span class="banner-text">Pair {{ cfg.tv_name }} to show pictures on it.</span><a class="button sm" href="{{ url_for('tv_settings', _anchor='pairing') }}">Pair TV</a></div>{% endif %}
+<div class="wall-layout now-layout">
+  <section class="now-picture" aria-label="On the TV">
+    <div class="picture-frame{% if screen_status.overlay %} has-overlay tone-{{ screen_status.overlay.tone }}{% endif %}" data-tv-artwork-stage>
+      {% if screen_status.overlay %}<div class="screen-overlay" role="status"><p><strong>{{ screen_status.overlay.title }}</strong> · {{ screen_status.overlay.text }}</p></div>{% endif %}
+      {% if now.on_tv and now.on_tv.state == 'switched' and now.on_tv.app_revision %}<img src="{{ url_for('sent_image', app=now.on_tv.app_id, v=now.on_tv.app_revision, size='large') }}" alt="The picture of {{ now.on_tv.app }} that {{ cfg.tv_name }} shows"><div class="empty-frame" data-tv-artwork-error hidden role="status"><p>This picture changed or could not load.</p><a href="{{ url_for('tv_overview') }}">Reload</a></div>
+      {% elif now.on_tv and now.on_tv.state == 'switched' %}<div class="empty-frame"><p>{{ now.on_tv.app or 'Another layout' }} is on the TV</p><span>Art Frames has no copy of this picture yet.</span></div>
+      {% elif now.on_tv %}<img src="{{ url_for('sent_image', v=now.on_tv.revision, size='large') }}" alt="The last picture Art Frames sent to {{ cfg.tv_name }}"><div class="empty-frame" data-tv-artwork-error hidden role="status"><p>This picture changed or could not load.</p><a href="{{ url_for('tv_overview') }}">Reload</a></div>
+      {% else %}<div class="empty-frame"><p>Nothing shown yet</p>{% if now.show and now.plan.app and now.plan.app.id in now.show.setup %}<a class="button" href="{{ url_for('app_page', app_id=now.plan.app.id, _anchor='field-' ~ now.show.setup[now.plan.app.id]) }}">Set up {{ now.plan.app.name }}</a>{% elif now.show and now.plan.app %}<form method="post" action="{{ url_for('show_app', tv=screen_id) }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="hold" value="next-change"><button class="button" type="submit" name="app" value="{{ now.plan.app.id }}">{{ icon('play') }}Show {{ now.plan.app.name }} now</button></form>{% else %}<span>Art Frames sends a picture when {{ cfg.tv_name }} is on in Art Mode.</span>{% endif %}</div>{% endif %}
+    </div>
+    <p class="now-caption">
+      {% if now.on_tv %}<strong>{{ now.on_tv.app or 'Picture' }}</strong>{% endif %}
+      {% if now.switch and now.switch.paused %}<span class="small">{{ now.switch.paused }}</span>
+      {% elif now.switch and now.switch.soon %}<span class="small">Switching soon</span>
+      {% elif now.switch %}<span class="small" data-countdown="{{ now.switch.at }}" data-countdown-text="Switches to {{ now.switch.app }} in {left}" data-countdown-done="Switching to {{ now.switch.app }}">Switches to {{ now.switch.app }} at {{ now.switch.time }}</span>{% endif %}
+    </p>
+    {% if now.on_tv and now.on_tv.state == 'changed' %}
+    <div class="card now-changed">
+      {% if artwork and now.on_tv.tv_revision %}<img src="{{ url_for('tv_artwork_image', v=now.on_tv.tv_revision) }}" alt="What {{ cfg.tv_name }} showed at the last check">{% endif %}
+      <p class="small">{{ now.on_tv.note }} Checked {{ checked }}.</p>
+    </div>
+    {% endif %}
+  </section>
+  <aside class="screen-sidebar">
+    <section class="card now-panel" aria-label="What {{ cfg.tv_name }} shows">
+      <div class="now-item">
+        <p class="now-label">On the TV</p>
+        {% if now.on_tv %}<p class="now-value">{{ now.on_tv.app or 'A picture from Art Frames' }}</p><p class="small">{% if now.on_tv.state == 'switched' %}Taking turns{% if now.on_tv.switched %} · switched {{ now.on_tv.switched }}{% endif %}{% else %}Sent {{ now.on_tv.sent }} · {{ now.on_tv.note }}{% endif %}</p>
+        {% else %}<p class="now-value muted">Nothing sent yet</p>{% endif %}
+      </div>
+      {# Room: the sensor and the TV's brightness, from stored state only (sensor_web.room_view). live.json updates it. #}
+      {% if room.sensor or room.brightness %}<div class="now-item now-room"{% if room.sensor %} data-sensor-live data-url="{{ url_for('sensors.live_json') }}"{% endif %}>
+        <p class="now-label">Room</p>
+        {% if room.sensor %}
+        <p class="now-value" data-room-row{% if not room.word %} hidden{% endif %} data-sensor-field="word">{{ room.word }}</p>
+        <p class="small"><span data-sensor-field="presence">{{ room.presence }}</span>{% if room.light %} · <span data-sensor-field="light">{{ room.light }}</span>{% endif %}</p>
+        {% endif %}
+        <p class="small" data-room-row{% if not room.brightness %} hidden{% endif %} data-sensor-field="brightness">{{ room.brightness }}</p>
+        {% if room.resume %}<p class="small">{{ room.why }}</p>
+        <form method="post" action="{{ url_for('sensors.resume') }}" class="room-actions"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="back" value="now"><button class="button outline sm" type="submit">Resume now</button>{% if room.offer %}<a class="small" href="{{ url_for('sensors.sensor_page', _anchor='sensor-offer') }}">Keep this level</a>{% elif room.held %}<a class="small" href="{{ url_for('tv_health') }}">Health</a>{% endif %}</form>{% endif %}
+        {% if room.sensor %}<p class="small"><a href="{{ url_for('sensors.sensor_page') }}">Sensor settings</a></p>{% endif %}
+      </div>{% endif %}
+      {% if now.why %}<div class="now-item">
+        <p class="now-label">Why</p>
+        <p class="now-value">{% if now.hold %}Show now: holding {{ now.hold.app }}{% else %}{{ now.why }}{% endif %}</p>
+        {% if now.hold %}<p class="small">The schedule waits {{ now.hold.until }}.</p>
+        {% elif schedule.text %}<p class="small">{% if schedule.rotate or schedule.apps[0].builtin %}{{ schedule.text }}{% else %}<a href="{{ url_for('app_page', app_id=schedule.apps[0].id) }}">{{ schedule.text }}</a>{% endif %}</p>{% endif %}
+        {% if now.artwork_hint and not now.hold %}<p class="small">{{ now.artwork_hint }}. {% if now.artwork == 'empty' %}<a href="{{ url_for('gallery') }}">Add artwork</a>{% else %}<a href="{{ url_for('household', _anchor='artwork') }}">Turn it on</a>{% endif %}</p>{% endif %}
+        {% if schedule.fallback %}<p class="small">The schedule's layouts are not installed, so {{ cfg.tv_name }} shows {{ schedule.text }}.</p>{% endif %}
+      </div>{% endif %}
+      {% if schedule.next %}<div class="now-item">
+        <p class="now-label">Next</p>
+        <p class="now-value"><a href="{{ url_for('tv_schedule') }}">{{ schedule.next }}</a></p>
+      </div>{% endif %}
+      <div class="now-item">
+        <p class="now-label">Health</p>
+        {{ health_line(now.headline, now.problems) }}
+      </div>
+      <div class="now-item">
+        <p class="now-label">Turn-on time</p>
+        <p class="now-value"><a href="{{ url_for('tv_schedule', _anchor='wake-form') }}">{{ now.wake or 'Off' }}</a></p>
+      </div>
+    </section>
+  </aside>
+</div>
+<dialog class="dialog preview-dialog" id="preview-dialog" aria-labelledby="preview-title" {% if preview_open %}open{% endif %} data-dialog>
+  <div class="dialog-header">
+    <div><h2 id="preview-title">Preview first</h2><p class="small">A preview is not on the TV yet. Show it on the TV, and the schedule holds it until the next change.</p></div>
+    <form method="dialog"><button class="button ghost icon sm" type="submit">{{ icon('close') }}<span class="sr-only">Close</span></button></form>
+  </div>
+  <div class="preview-panel" data-preview-panel>
+    <form method="post" action="{{ url_for('preview_site') }}" class="preview-toolbar" data-preview-form data-image-url="{{ url_for('screen_image') }}">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      {% if preview_apps %}<label class="preview-app">Show<select name="app">{% for app in preview_apps if app.builtin %}<option value="{{ app.id }}" {% if app.id == preview_choice %}selected{% endif %}{% if app.id in setup_apps %} data-setup{% endif %}>{{ app.name }}{% if app.id in setup_apps %} (needs setup){% endif %}</option>{% endfor %}{% set layouts = preview_apps | rejectattr('builtin') | list %}{% if layouts %}<optgroup label="Layouts">{% for app in layouts %}<option value="{{ app.id }}" {% if app.id == preview_choice %}selected{% endif %}{% if app.id in setup_apps %} data-setup{% endif %}>{{ app.name }}{% if app.id in setup_apps %} (needs setup){% endif %}</option>{% endfor %}</optgroup>{% endif %}</select></label>{% endif %}
+      <div class="preview-tools"><button class="button outline" type="submit">Make a preview</button></div>
+      <p class="small" data-preview-status role="status" aria-live="polite"></p>
+    </form>
+    <div class="picture-frame" data-preview-stage>{% if preview_revision %}<img src="{{ url_for('screen_image', v=preview_revision) }}" alt="Latest preview">{% else %}<div class="empty-frame"><p>No preview yet</p><span>Make a preview to see the next picture.</span></div>{% endif %}</div>
+    <p class="small preview-caption" data-preview-label data-preview-label-text="Preview of {app}">{% if preview_revision %}{{ 'Preview of ' ~ preview_name if preview_name else 'Preview' }}{% endif %}</p>
+    <form method="post" action="{{ url_for('send_preview') }}" class="dialog-footer">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="preview_revision" value="{{ preview_revision }}" data-preview-revision>
+      <button class="button" type="submit" disabled>{{ icon('play') }}Show on {{ cfg.tv_name }}</button>
+    </form>
+  </div>
+</dialog>
+{% endblock %}

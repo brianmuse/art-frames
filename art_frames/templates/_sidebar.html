@@ -1,0 +1,65 @@
+{# Sidebar: the TV switcher, the grouped navigation and the footer. On narrow screens it is a Sheet
+   that the top bar's menu button opens; without JavaScript, the button's #sidebar link opens it. #}
+{% from '_ui.html' import icon, status_dot %}
+{% set here = nav_page or request.endpoint %}
+{# A menu item. count adds a red dot with a number, such as Health's problems; note adds a muted word. #}
+{% macro item(endpoint, label, name, url=none, active=none, count=0, note='', child=false) %}
+<li{% if child %} class="sidebar-menu-child"{% endif %}><a class="sidebar-menu-button" href="{{ url or url_for(endpoint) }}" {% if (active if active is not none else here == endpoint) %}aria-current="page"{% endif %}>{{ icon(name) }}<span>{{ label }}</span>{% if count %}<span class="sidebar-count" title="{{ count }} to fix">{{ count }}<span class="sr-only"> to fix</span></span>{% elif note %}<span class="sidebar-note">{{ note }}</span>{% endif %}</a></li>
+{% endmacro %}
+<aside class="sidebar" id="sidebar" data-sidebar>
+  <div class="sidebar-header">
+    <a class="button ghost icon sm sidebar-close" href="#main" data-sidebar-close>{{ icon('close') }}<span class="sr-only">Close menu</span></a>
+  </div>
+  <nav class="sidebar-content" aria-label="Main navigation">
+    <div class="sidebar-group">
+      <ul class="sidebar-menu">
+        {{ item('dashboard', 'Home', 'home', url_for('dashboard', tv=None), here in ('dashboard', 'add_tv')) }}
+      </ul>
+    </div>
+    {# The TV panel: the switcher heads the pages that act on the TV it names. #}
+    <div class="sidebar-group">
+      <div class="sidebar-tv">
+        <details class="dropdown tv-switcher" data-tv-switch>
+          <summary class="tv-switcher-trigger">
+            <span class="tv-switcher-avatar" aria-hidden="true">{{ icon('tv') }}</span>
+            <span class="tv-switcher-text"><span class="tv-switcher-name">{{ current_tv.name }}</span>{{ status_dot(current_tv.state) }}</span>
+            {{ icon('chevrons') }}<span class="sr-only">Switch TV</span>
+          </summary>
+          <div class="dropdown-content">
+            <p class="dropdown-label">TVs</p>
+            {% for tv in tvs %}
+            <a class="dropdown-item" href="{{ switch_url(tv.id) }}" {% if tv.id == current_tv.id %}aria-current="true"{% endif %}><span class="dropdown-item-text"><span>{{ tv.name }}</span>{{ status_dot(tv.state) }}</span>{% if tv.id == current_tv.id %}{{ icon('check') }}{% endif %}</a>
+            {% endfor %}
+            <hr class="dropdown-separator">
+            <a class="dropdown-item" href="{{ url_for('add_tv', tv=None) }}">{{ icon('plus') }}<span>Add TV</span></a>
+          </div>
+        </details>
+        <ul class="sidebar-menu" aria-label="{{ current_tv.name }}">
+          {{ item('tv_overview', 'Now', 'tv') }}
+          {{ item('tv_schedule', 'Schedule', 'schedule') }}
+          {{ item('tv_picture', 'Picture', 'display') }}
+          {{ item('sensors.sensor_page', 'Sensor', 'sensor', note='' if cfg.sensor.host else 'Add') }}
+          {{ item('tv_health', 'Health', 'health', count=health_count) }}
+          {{ item('tv_settings', 'TV settings', 'settings') }}
+        </ul>
+      </div>
+    </div>
+    <div class="sidebar-group">
+      <p class="sidebar-group-label">Household</p>
+      <ul class="sidebar-menu">
+        {# Layouts always shows, so a new owner finds how to install one. A custom website has no layouts page. #}
+        {% if not cfg.site.path %}{{ item('apps_index', 'Layouts', 'app', none, here == 'apps_index' or here == 'app_page' and installed_apps | length < 2) }}{% endif %}
+        {% if installed_apps %}
+        {% if installed_apps | length > 1 %}{% for app in installed_apps %}{{ item('app_page', app.name, 'chevron', url_for('app_page', app_id=app.id), here == 'app_page' and current_app == app.id, child=true) }}{% endfor %}{% endif %}{% endif %}
+        {% if uses_artwork %}{{ item('gallery', 'Artwork', 'collection', none, here in ('gallery', 'discover')) }}{% endif %}
+        {{ item('household', 'Household settings', 'household') }}
+        {{ item('server.server_page', 'Server', 'server', note='Update' if update.available else '') }}
+      </ul>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    {% if not scheduler_ok %}<p class="small">{{ status_dot({'word': 'Scheduler stopped · Restart Art Frames', 'tone': 'failed'}) }}</p>{% endif %}
+    {% if update.available %}<p class="small"><a href="{{ url_for('server.server_page', _anchor='updates') }}">Art Frames {{ update.latest | replace('v', '', 1) }} is out</a></p>{% endif %}
+    <p class="small">Art Frames {{ version }}{% if demo %} · Demo{% endif %} · <a href="https://github.com/brianmuse/art-frames/tree/main/docs" target="_blank" rel="noopener noreferrer">Docs ↗</a></p>
+  </div>
+</aside>

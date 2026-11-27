@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header, card_notes with context %}
+{# Starter plans (web.tv_plans, starters.py): pick a plan, see what changes, then apply it. #}
+{% block title %}Plans · {{ cfg.tv_name }}{% endblock %}
+{% set crumbs = [(cfg.tv_name, url_for('tv_overview')), ('Schedule', url_for('tv_schedule', day=day)), ('Plans', none)] %}
+{% macro bar(parts) %}<svg class="plan-bar" viewBox="0 0 100 8" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+{% for part in parts %}{% if part.kind == 'wake' %}<rect class="plan-wake" x="{{ part.left }}" y="0" width="0.8" height="8"></rect>{% else %}<rect class="plan-{{ part.kind }}" x="{{ part.left }}" y="1" width="{{ part.width }}" height="6" rx="1"></rect>{% endif %}{% endfor %}
+</svg>{% endmacro %}
+{% block content %}
+{{ page_header('Choose a plan' if not chosen else chosen.name, 'Start ' ~ cfg.tv_name ~ ' from a ready-made plan for ' ~ day_name ~ '. You can change it after.' if not chosen else chosen.line) }}
+{{ card_notes('timeline') }}
+{% if not chosen %}
+{% if first_run %}<p class="alert neutral">{{ cfg.tv_name }} is paired. Choose what it shows, or <a href="{{ url_for('tv_overview') }}">skip this for now</a>.</p>{% endif %}
+<ul class="plan-list">
+  {% for row in plans %}<li><a class="card plan-card" href="{{ url_for('tv_plans', day=day, plan=row.plan.key) }}">
+    <strong>{{ row.plan.name }}</strong><span class="small">{{ row.plan.line }}</span>{{ bar(row.bar) }}
+    <span class="plan-hours small" aria-hidden="true"><span>12 AM</span><span>12 PM</span><span>12 AM</span></span>
+  </a></li>{% endfor %}
+  <li><a class="card plan-card plan-custom" href="{{ url_for('tv_schedule', day=day) }}#timeline"><strong>Custom</strong><span class="small">Build the day yourself on the timeline.</span></a></li>
+</ul>
+<p class="small plan-legend"><span class="plan-key plan-key-rest"></span>Artwork <span class="plan-key plan-key-block"></span>A layout at set times <span class="plan-key plan-key-wake"></span>Turns on</p>
+{% else %}
+<section class="card settings-panel" aria-labelledby="plan-changes-title">
+  <div class="card-header"><h2 class="card-title" id="plan-changes-title">What changes</h2><p class="card-description">Check the changes, then apply the plan. You can undo it on the Schedule page.</p></div>
+  {% if preview.lines %}<table class="plan-diff">
+    <thead><tr><th scope="col">Setting</th><th scope="col">Now</th><th scope="col">After</th></tr></thead>
+    <tbody>{% for row in preview.lines %}<tr><th scope="row">{{ row.label }}</th><td data-label="Now">{{ row.before }}</td><td data-label="After"><strong>{{ row.after }}</strong></td></tr>{% endfor %}</tbody>
+  </table>{% else %}<p>{{ cfg.tv_name }} already uses this plan. Nothing changes.</p>{% endif %}
+  {% if preview.wake_note %}<p class="small">To turn on at {{ preview.wake_note }}, add the TV's address and MAC address in <a href="{{ url_for('tv_settings', _anchor='connection-advanced') }}">TV settings</a>.</p>{% endif %}
+  {% for note in preview.notes %}<p class="small">{{ note }}</p>{% endfor %}
+  <form method="post" action="{{ url_for('apply_plan') }}" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="plan" value="{{ chosen.key }}"><input type="hidden" name="day" value="{{ day }}"><input type="hidden" name="schedule_version" value="{{ schedule_version }}">
+    {% if preview.album %}<label>{{ preview.album.label }}<input type="password" name="album_url" autocomplete="off" maxlength="4096" placeholder="Paste the link, or add it later on the Photos page"></label>{% endif %}
+    <div class="card-footer"><button class="button" type="submit">Apply plan</button><a class="button outline" href="{{ url_for('tv_plans', day=day) }}">Back to plans</a></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header, card_notes, timezone_field, settings_card, fold_card, duration_select, preset_group with context %}
+{% block title %}Household settings{% endblock %}
+{% set crumbs = [('Household settings', none)] %}
+{# Each TV that keeps its own website settings, with a button that makes it use the household's again. #}
+{% macro own_list(title) %}
+<div class="own-site">
+  <h3>{{ title }}</h3>
+  <ul class="plain-list">{% for item in own_site %}<li><span>{{ item.name }}</span><form method="post" action="{{ url_for('follow_shared') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="display" value="{{ item.id }}"><button class="button outline sm" type="submit">Use household settings</button></form></li>{% endfor %}</ul>
+</div>
+{% endmacro %}
+{% block content %}
+{{ page_header('Household settings', 'Settings that every TV shares.') }}
+<div class="settings-sections">
+{% if shared.timezone == 'UTC' and not timezone_ok %}<div class="alert banner" role="status">{{ icon('alert') }}<span class="banner-text"><strong>Art Frames uses UTC.</strong> Set your timezone so schedules start at the right hour.</span></div>{% endif %}
+{% call(part) settings_card('timezone', 'Timezone', 'Schedules, turn-on times and the daily artwork use this clock.', url_for('save_timezone'), errors.get('timezone')) %}
+  {% if part == 'fields' %}{{ timezone_field('timezone', cards.timezone.timezone, 'Timezone') }}{% endif %}
+{% endcall %}
+
+{% call(part) settings_card('refresh', 'Refresh', 'How often each layout can show a new picture. Faster settings update the TV more often.', url_for('save_refresh'), errors.get('refresh')) %}
+  {% if part == 'fields' %}
+  {% call preset_group('preset', 'Refresh layouts', REFRESH_OPTIONS, refresh_preset(cards.refresh.refresh), custom_line='Choose the minutes yourself.') %}
+  {{ duration_select('refresh', 'Refresh each layout every', REFRESH_CHOICES, cards.refresh.refresh, 60) }}
+  {% endcall %}
+  {% if own_site %}<p class="small">These TVs keep their own value:</p>
+  <ul class="plain-list small">{% for item in own_site %}<li>{{ item.name }}: every {{ duration(item.refresh * 60) }}. <a href="#website" data-open-details>Use household settings</a></li>{% endfor %}</ul>{% endif %}
+  {% endif %}
+{% endcall %}
+
+{% set artwork_description = 'Artwork shows on every TV when no layout is scheduled. When it is off, the TVs show a plain frame instead.' if household_apps else 'The artwork Art Frames picks each day from your artwork.' %}
+{% call(part) settings_card('artwork', 'Daily artwork', artwork_description, url_for('save_artwork'), errors.get('artwork')) %}
+  {% if part == 'fields' %}
+  {% if not household_apps %}<input type="hidden" name="supply_shown" value="1"><label class="check"><input type="checkbox" class="switch" name="supply" {% if cards.artwork.supply %}checked{% endif %}>Show the daily artwork on your TVs</label>{% endif %}
+  <label class="check"><input type="checkbox" class="switch" name="enabled" {% if cards.artwork.enabled %}checked{% endif %}>{{ 'Show daily artwork on your TVs' if household_apps else 'Pick a new artwork each day' }}</label>
+  <div class="form-grid"><label>Order<select name="order"><option value="shuffle" {% if cards.artwork.order == 'shuffle' %}selected{% endif %}>Shuffle</option><option value="sequential" {% if cards.artwork.order == 'sequential' %}selected{% endif %}>In order</option></select></label><label>New day starts at<input type="time" name="change_at" value="{{ cards.artwork.change_at }}" required></label></div>
+  <details id="museum-sources" {% if errors.get('artwork') %}open{% endif %}><summary>Museums for Find art</summary>{% for key, label in providers.items() %}<label class="check"><input type="checkbox" name="sources" value="{{ key }}" {% if key in cards.artwork.sources %}checked{% endif %}>{{ label }}</label>{% endfor %}</details>
+  {% endif %}
+{% endcall %}
+
+{% call fold_card('website', 'Advanced', ('Ready selector and page data. For custom websites.' if household_apps else 'Website folder, ready selector and page data. For custom websites.'), open=errors.get('website') or panel_notes('card-website'), action_label='Open') %}
+  {{ card_notes('website', errors.get('website')) }}
+  <form method="post" action="{{ url_for('save_website') }}#website" class="stack" data-card-form data-card-label="Advanced"><input type="hidden" name="csrf" value="{{ csrf }}">
+    {# Installed layouts set their own folder and entry page (save_website leaves them as they are). #}
+    {% if not household_apps %}
+    <label>Website build folder<input name="path" value="{{ cards.website.path }}" placeholder="my-site/dist"><small>Inside the sites folder. Leave it blank for the default website.</small></label>
+    <label>Entry page<input name="entry" value="{{ cards.website.entry }}" required></label>
+    {% endif %}
+    <label>Ready selector<input name="ready_selector" value="{{ cards.website.ready_selector }}" placeholder="[data-dayframe-ready]"><small>Optional. Art Frames waits for this element before it takes the picture.</small></label>
+    <label>Page data, JSON<textarea name="data" rows="5">{{ cards.website.data }}</textarea><small>Your website reads it from /dayframe.json.</small></label>
+    <div class="card-footer"><button class="button" type="submit">Save</button></div>
+  </form>
+  {% if own_site %}{{ own_list('TVs with their own website settings') }}{% endif %}
+{% endcall %}
+</div>
+{% endblock %}

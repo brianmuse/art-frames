@@ -1,0 +1,11 @@
+{# Starter plans on the Schedule page (web.starter_offer): Undo after a plan, and plans on an empty day. #}
+{% macro starter_undo(day, empty=False) %}{% set offer = starter_offer(day) %}
+{% if offer.undo %}<form class="alert neutral plan-undo" method="post" action="{{ url_for('undo_plan') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><span>{{ cfg.tv_name }} uses “{{ offer.undo.plan }}”.{% if offer.undo.settings or offer.undo.shared %} Undo also puts back the layout and household values the plan changed.{% endif %} <a href="{{ url_for('tv_plans', day=day) }}">Change plan</a></span><button class="button outline sm" type="submit">Undo</button></form>
+{% elif offer.chosen and not (empty and offer.plans) %}{# an empty day lists the plans instead #}<p class="small plan-change"><a href="{{ url_for('tv_plans', day=day) }}">Change plan</a></p>{% endif %}
+{% endmacro %}
+{% macro starter_links(day) %}{% set offer = starter_offer(day) %}
+{% if offer.plans %}<div class="plan-start">
+  <p class="small">Or start from a plan:</p>
+  <ul class="plan-links">{% for plan in offer.plans %}<li><a class="button outline sm" href="{{ url_for('tv_plans', day=day, plan=plan.key) }}">{{ plan.name }}</a></li>{% endfor %}<li><a class="button ghost sm" href="{{ url_for('tv_plans', day=day) }}">All plans</a></li></ul>
+</div>{% endif %}
+{% endmacro %}

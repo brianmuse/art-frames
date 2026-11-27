@@ -1,0 +1,12 @@
+{% from '_ui.html' import advanced_row with context %}
+<div class="tv-discovery" data-tv-discovery data-url="{{ url_for('discover_tvs') }}"{% if discovery_autostart %} data-autostart{% endif %}>
+<p id="tv-search-help" class="small">Keep your TVs on. The search runs from your Art Frames server.</p>
+<button class="button outline" type="button" data-tv-find>Find TVs</button>
+{% call advanced_row('tv-search-network', label='Search a different network') %}
+<label>Network to search<input name="discovery_network" value="{{ tv_network }}" placeholder="192.168.1.0/24" aria-describedby="tv-search-help"></label>
+<p class="small">Use this when your TVs are on another network than the one shown.</p>
+{% endcall %}
+<p class="small" role="status" aria-live="polite" data-tv-search-status></p>
+<ul class="tv-results" data-tv-results aria-label="Discovered televisions"></ul>
+<noscript><p class="small">Enable JavaScript to find TVs, or enter the address below.</p></noscript>
+</div>

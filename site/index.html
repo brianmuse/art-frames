@@ -1,0 +1,929 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Art Frames</title>
+<meta name="description" content="Free, open-source software for Samsung The Frame. It puts public-domain museum art on the TV every day, shows your own layouts on a schedule, and turns the screen on and off with a room sensor.">
+<meta name="color-scheme" content="dark">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Art Frames">
+<meta property="og:description" content="Museum art on your Frame TV, every day. Your own layouts on a schedule. A room sensor turns the screen on and off.">
+<meta property="og:image" content="https://brianmuse.github.io/art-frames/images/tv-artwork-mat.webp">
+<meta property="og:image:width" content="1920">
+<meta property="og:image:height" content="1080">
+<meta property="og:url" content="https://brianmuse.github.io/art-frames/">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap">
+<style>
+  /* One look in light and dark: a deep green page with off-white type. */
+  :root {
+    --paper: #213c2e;
+    --wall: #1b3226;
+    --wall-2: rgb(244 241 234 / .07);
+    --card: #284536;
+    --ink: #f4f1ea;
+    --muted: #b8c5b6;
+    --line: rgb(244 241 234 / .13);
+    --accent: #d6b77f;
+    --code-bg: #142519;
+    --code-ink: #e6ece3;
+    /* Walnut TV frames, like the Frame's beveled wood bezels: grain lines over a warm gradient. */
+    --wood:
+      repeating-linear-gradient(0.6deg, rgb(255 226 190 / .05) 0 1px, transparent 1px 5px),
+      repeating-linear-gradient(-0.4deg, rgb(30 16 6 / .16) 0 1px, transparent 1px 10px),
+      repeating-linear-gradient(1.1deg, rgb(255 226 190 / .04) 0 2px, transparent 2px 23px),
+      linear-gradient(150deg, #835c3d, #67452c 45%, #523621);
+    /* The moulding: a lit outer lip, a shaded cove, and (on .screen) a gilt bead at the sight edge. */
+    --wood-edge: inset 1px 1px 0 rgb(255 228 196 / .34), inset -1px -1px 0 rgb(20 10 4 / .5), inset 0 0 0 1px rgb(40 22 10 / .5),
+      inset 0 0 0 3px rgb(255 226 190 / .07), inset 0 0 7px 3px rgb(28 14 5 / .3);
+    --tv-shadow: 0 1px 1px rgb(5 16 10 / .3), 0 10px 24px -8px rgb(5 16 10 / .4), 0 50px 90px -30px rgb(5 16 10 / .6);
+    --soft-shadow: 0 1px 2px rgb(5 16 10 / .2), 0 18px 40px -18px rgb(5 16 10 / .5);
+    --serif: Newsreader, "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --wide: 1200px;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font: 17px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden;
+  }
+  img { display: block; max-width: 100%; height: auto; }
+  a { color: inherit; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 3px; }
+  a:hover { text-decoration-color: currentColor; }
+  .wrap { max-width: var(--wide); margin: 0 auto; padding: 0 40px; }
+
+  /* Header */
+  header.top { display: flex; align-items: center; justify-content: space-between; height: 88px; }
+  .logo { display: block; }
+  .logo img { width: 124px; height: 28px; }
+  header.top nav { display: flex; gap: 32px; font-size: 14px; }
+  header.top nav a { text-decoration: none; color: var(--muted); padding: 10px 0; transition: color .3s; }
+  header.top nav a:hover { color: var(--ink); }
+  header.top nav { align-items: center; }
+  header.top nav .gh { display: inline-flex; }
+  header.top nav .gh svg { display: block; }
+
+  /* Type */
+  .eyebrow { font: 500 12px/1 var(--sans); letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin: 0 0 22px; }
+  h1, h2 { font-family: var(--serif); font-weight: 400; font-optical-sizing: auto; letter-spacing: -.018em; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(40px, 5.6vw, 72px); line-height: 1.04; }
+  h2 { font-size: clamp(34px, 4.2vw, 54px); line-height: 1.08; margin-bottom: 24px; }
+  h3 { font: 500 15px/1.35 var(--sans); margin: 0 0 6px; }
+  .lede { font-size: clamp(18px, 1.7vw, 20px); line-height: 1.6; color: var(--muted); max-width: 33em; margin: 0; }
+  p { margin: 0 0 14px; }
+  .muted { color: var(--muted); }
+  .small { font-size: 14px; }
+
+  .button {
+    display: inline-flex; align-items: center; gap: 8px; height: 44px; padding: 0 22px; border-radius: 999px;
+    font-size: 15px; font-weight: 500; text-decoration: none; border: 1px solid var(--ink); background: var(--ink); color: var(--paper);
+    transition: background-color .3s, border-color .3s, color .3s;
+  }
+  .button:hover { background: #fffdf8; border-color: #fffdf8; }
+  .button.quiet { background: transparent; color: var(--ink); border-color: color-mix(in srgb, var(--ink) 28%, transparent); }
+  .button.quiet:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); border-color: color-mix(in srgb, var(--ink) 50%, transparent); }
+  .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }
+
+  /* Hero */
+  .hero-copy { text-align: center; padding-top: 88px; }
+  .hero-copy .lede { margin: 22px auto 0; font-size: clamp(17px, 1.5vw, 18.5px); }
+  .gallery-row { text-align: center; padding-top: clamp(56px, 7vw, 96px); }
+  .hero-copy .actions { justify-content: center; }
+  .features { list-style: none; padding: 0; margin: 80px auto 0; max-width: 1040px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; text-align: left; }
+  .features a { display: grid; align-content: start; gap: 6px; height: 100%; padding: 22px 22px 24px; border-radius: 16px; background: color-mix(in srgb, var(--ink) 4%, transparent); color: inherit; text-decoration: none; transition: background-color .4s ease; }
+  .features a:hover { background: color-mix(in srgb, var(--ink) 7.5%, transparent); }
+  .features svg { width: 26px; height: 26px; fill: none; stroke: var(--accent); stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; margin-bottom: 6px; }
+  .features strong { font-weight: 500; font-size: 15px; }
+  .features span { color: var(--muted); font-size: 14px; line-height: 1.45; }
+  @media (max-width: 900px) { .features { grid-template-columns: repeat(2, 1fr); } }
+  .tv {
+    position: relative; width: min(1040px, 100%); margin: 0 auto; aspect-ratio: 16 / 9;
+    padding: clamp(8px, 1.25vw, 16px); border-radius: 2px;
+    background: var(--wood);
+    box-shadow: var(--wood-edge), var(--tv-shadow);
+  }
+  /* The fine dark line where the wood meets the screen, and the bevel's lit inner edge. */
+  .tv .screen { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; box-shadow: 0 0 0 2px #120c08, 0 0 0 3.5px rgb(206 170 112 / .5), 0 0 0 5px rgb(30 16 6 / .3); }
+  .tv .screen img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .tv .screen::after { /* faint matte glare */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(115deg, rgb(255 255 255 / .05), transparent 40%);
+  }
+  /* Hero: a 3D bedroom (vendor/hero-room.js). A script in <head> adds .hero-3d to <html> before the
+     page paints when the browser has WebGL and the reader allows motion. Then the stage pins while you
+     scroll: the camera moves in, the TV turns on at 7:00 with the Morning layout, fades to just the art
+     at 9:00, and the camera ends on the room sensor. The stage shows a picture of the room's first
+     frame until the live room is ready, so there is no jump. Without .hero-3d, the hero is a still
+     picture of the room. */
+  .hero-scroll { margin-top: 96px; }
+  .hero-stage {
+    position: relative; overflow: hidden; width: min(1200px, 100% - 80px); margin: 0 auto; aspect-ratio: 16 / 9; border-radius: 14px;
+    background: #ebe5db url(images/hero-room-still.webp) center / cover no-repeat;
+  }
+  .hero-spacer { display: none; }
+  .hero-3d .hero-stage { position: sticky; top: 0; width: auto; margin: 0 20px; height: calc(100svh - 40px); aspect-ratio: auto; border-radius: 22px; background-image: url(images/hero-room-start.webp); }
+  .hero-3d .hero-spacer { display: block; height: 380svh; }
+  .hero-room { position: absolute; inset: 0; z-index: 0; opacity: 0; transition: opacity .8s ease; pointer-events: none; }
+  .hero-room.ready { opacity: 1; }
+  .hero-room canvas { display: block; width: 100%; height: 100%; }
+  /* Callouts: once the camera has moved in, small notes point at parts of the room. Each has a dot on
+     its target (placed from the 3D scene), a thin leader line, and a compact glass box. The script
+     places them and turns them on and off with the story. */
+  .story { display: none; }
+  .hero-3d .story { display: block; }
+  .story { position: absolute; z-index: 2; inset: 0; pointer-events: none; --glass-ink: #1f2a23; --glass-muted: #5f6a60; --glass: rgb(252 249 243 / .8); }
+  .leaders { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .leaders path { fill: none; stroke: var(--glass-ink); stroke-width: 1; opacity: 0; transition: opacity .35s ease; }
+  .leaders path.on { opacity: .55; }
+  .callout { position: absolute; inset: 0 auto auto 0; }
+  .callout p {
+    position: absolute; margin: 0; width: max-content; max-width: 264px; padding: 9px 12px 10px; border-radius: 10px;
+    font: 13px/1.4 var(--sans); color: var(--glass-ink); text-wrap: balance; opacity: 0; transform: scale(.9); transform-origin: var(--origin, left center);
+    background: var(--glass); backdrop-filter: blur(12px) saturate(1.2); -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    border: 1px solid rgb(31 42 35 / .08);
+    box-shadow: 0 1px 2px rgb(30 22 12 / .06), 0 10px 24px -14px rgb(30 22 12 / .35);
+    transition: opacity .25s ease, transform .5s cubic-bezier(.34, 1.56, .64, 1);
+  }
+  .callout small {
+    display: block; margin-bottom: 3px; font: 500 11px/1.2 var(--sans); font-variant-caps: all-small-caps;
+    letter-spacing: .08em; color: var(--glass-muted); font-variant-numeric: tabular-nums;
+  }
+  .callout .short { display: none; }
+  .callout .dot { position: absolute; left: -4px; top: -4px; width: 8px; height: 8px; border-radius: 50%; opacity: 0; transition: opacity .3s ease;
+    background: #fffdf8; box-shadow: 0 0 0 1.5px var(--glass-ink), 0 1px 3px rgb(0 0 0 / .3); }
+  .callout .dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 1px solid #fffdf8; animation: callout-pulse 2.2s ease-out infinite; }
+  @keyframes callout-pulse { from { transform: scale(.6); opacity: .9; } to { transform: scale(2.2); opacity: 0; } }
+  .callout.on p { opacity: 1; transform: none; }
+  .callout.on .dot { opacity: 1; }
+  /* A soft vignette, like a lens, over the poster and the live room alike. */
+  .hero-3d .hero-stage::after { content: ''; position: absolute; z-index: 1; inset: 0; pointer-events: none; background: radial-gradient(ellipse 75% 70% at 50% 45%, transparent 55%, rgb(38 26 14 / .12)); border-radius: inherit; }
+  /* The pinned room sits as a rounded window in the page green, with a soft inner edge. */
+  .hero-3d .hero-stage::before { content: ''; position: absolute; z-index: 1; inset: 0; pointer-events: none; border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06), inset 0 0 60px rgb(33 60 46 / .18); }
+
+  /* Rows of Frame TVs that drift slowly, each showing a public-domain artwork at 16:9 with an even mat. */
+  .gallery {
+    --s: 1; --gap: calc(26px * var(--s));
+    display: grid; gap: calc(24px * var(--s)); overflow: hidden; padding: 8px 0 20px;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  }
+  .track { display: flex; gap: var(--gap); width: max-content; animation: drift var(--t, 120s) linear infinite; }
+  .track:nth-child(2) { animation-direction: reverse; }
+  @keyframes drift { from { transform: translateX(0); } to { transform: translateX(calc(-50% - var(--gap) / 2)); } }
+  @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
+  .piece { flex: none; margin: 0; padding: calc(9px * var(--s)); background: #f5f2ec; border: calc(3px * var(--s)) solid #1a1713;
+    box-shadow: 0 1px 1px rgb(5 16 10 / .25), 0 10px 18px -8px rgb(5 16 10 / .45); }
+  .piece img { display: block; height: calc(86px * var(--s)); width: auto; aspect-ratio: 16 / 9; object-fit: cover; max-width: none; }
+  .sources { font-size: 12.5px; color: var(--muted); margin: 26px auto 0; max-width: 40em; }
+
+  /* Sections */
+  section.part { padding-top: clamp(112px, 14vw, 192px); }
+  .split { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 72px; align-items: center; }
+  .split.flip { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); }
+  .head { max-width: 640px; }
+  .head.center { margin: 0 auto; text-align: center; }
+  .head.center .lede { margin: 0 auto; }
+
+  .points { list-style: none; padding: 0; margin: 36px 0 0; }
+  .points li { padding: 14px 0; border-top: 1px solid var(--line); font-size: 15px; color: var(--muted); }
+  .points strong { color: var(--ink); font-weight: 500; }
+
+  /* Browser frame for one cropped UI element */
+  .window { background: var(--card); border-radius: 12px; box-shadow: var(--soft-shadow); overflow: hidden; }
+  .window .bar { height: 32px; display: flex; align-items: center; gap: 6px; padding: 0 14px; }
+  .window .bar i { width: 9px; height: 9px; border-radius: 50%; background: color-mix(in srgb, var(--ink) 16%, transparent); }
+  .window .bar span { margin-left: 10px; font-size: 11.5px; color: var(--muted); }
+  .window img { width: 100%; }
+  figure { margin: 0; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 14px; }
+
+  /* Layouts: day strip and three small TVs */
+  .day { margin: 80px auto 0; max-width: 1040px; }
+  .strip { display: flex; height: 40px; border-radius: 8px; overflow: hidden; gap: 3px; }
+  .strip div {
+    display: flex; align-items: center; padding: 0 12px; font-size: 12.5px; font-weight: 500; white-space: nowrap; overflow: hidden;
+    background: var(--wall-2); color: var(--muted);
+  }
+  .strip .l { background: #e9e2d2; color: #213c2e; }
+  .ticks { display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted); margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .shows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px 44px; margin: 72px auto 0; max-width: 1040px; }
+  .shows .tv { padding: clamp(5px, .8vw, 10px); --tv-shadow: var(--soft-shadow); }
+  .shows figcaption { margin-top: 18px; }
+  .shows figcaption b { display: block; margin-bottom: 2px; font: 400 20px/1.3 var(--serif); color: var(--ink); }
+  .note { max-width: 640px; margin: 48px auto 0; text-align: center; }
+  /* Every TV in the house: one row per TV, each with its own day. Art is the plain part of each strip. */
+  .house { max-width: 1040px; margin: 104px auto 0; }
+  .house h3 { font: 400 26px/1.2 var(--serif); margin-bottom: 12px; }
+  .house > p { max-width: 40em; margin-bottom: 22px; }
+  .house-rows { display: grid; gap: 14px; }
+  .house-row { display: grid; grid-template-columns: 64px 110px minmax(0, 1fr); gap: 14px; align-items: center; }
+  .house-row b { font-weight: 500; font-size: 14px; }
+  .house-row b small { display: none; }
+  .house-row .strip { height: 30px; border-radius: 6px; }
+  .house-row .ticks { margin-top: 0; }
+  .house-tv { display: block; aspect-ratio: 16 / 9; padding: 3px; border-radius: 2px; background: var(--wood); box-shadow: var(--wood-edge), var(--soft-shadow); }
+  .house-tv img { width: 100%; height: 100%; object-fit: cover; }
+
+  /* Sensor */
+  .rules { display: grid; gap: 0; border-top: 1px solid var(--line); margin-top: 8px; }
+  .rule { display: grid; grid-template-columns: minmax(0, 240px) minmax(0, 1fr); gap: 40px; padding: 36px 0; border-bottom: 1px solid var(--line); align-items: center; }
+  .rule h3 { font: 400 22px/1.25 var(--serif); margin-bottom: 8px; }
+  .rule p { margin: 0; font-size: 14px; color: var(--muted); }
+  .steps { display: flex; align-items: flex-start; gap: 0; }
+  .step { flex: 0 0 auto; width: 128px; text-align: center; }
+  .arrow { flex: 1 1 24px; min-width: 16px; max-width: 64px; height: 1px; background: color-mix(in srgb, var(--ink) 30%, transparent); margin-top: 36px; position: relative; }
+  .arrow::after { content: ""; position: absolute; right: 0; top: -3px; border: 3.5px solid transparent; border-left: 5px solid color-mix(in srgb, var(--ink) 30%, transparent); border-right: 0; }
+  .mini {
+    width: 128px; aspect-ratio: 16 / 9; padding: 3px; border-radius: 2px; margin: 0 auto 10px;
+    background: var(--wood); box-shadow: var(--wood-edge), var(--soft-shadow);
+  }
+  .mini span { display: block; width: 100%; height: 100%; background: url(images/tv-artwork-mat-480.webp) center / cover #000; }
+  .mini.dim span { filter: brightness(.42) saturate(.8); }
+  .mini.blank span { background: #050505; }
+  .mini.off { background: color-mix(in srgb, #000 12%, transparent); box-shadow: none; border: 1px dashed color-mix(in srgb, var(--muted) 45%, transparent); }
+  .mini.off span { background: none; }
+  .step b { display: block; font-size: 13.5px; font-weight: 500; }
+  .step small { display: block; font-size: 12px; color: var(--muted); line-height: 1.4; }
+  .sensor-extra { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 72px; margin-top: 96px; align-items: start; }
+
+  .build { align-items: start; }
+  .build-title { font: 400 clamp(30px, 3.4vw, 44px)/1.05 var(--serif); letter-spacing: -.01em; margin: 0 0 18px; }
+  .build .points { margin-top: 24px; }
+  .build .actions { margin-top: 28px; }
+  /* Mat demo: the art sits inside an even mat, as in "Fill the screen" mode. */
+  .mat-demo { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 64px; align-items: center; margin-top: clamp(72px, 9vw, 112px); }
+  .mat-tv { width: 100%; padding: clamp(6px, .9vw, 12px); }
+  .mat-tv .screen { transition: background-color .25s; }
+  .mat-open { position: absolute; inset: 0; }
+  .mat-open::before { /* the cut edge: shaded at the top and left, lit at the bottom and right */
+    content: ""; position: absolute; inset: calc(var(--d, 0px) * -1); border: var(--d, 0px) solid; border-color: var(--shade) var(--light) var(--light) var(--shade);
+  }
+  .mat-open::after { /* a soft contact shadow inside the opening */
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    box-shadow: inset 0 var(--sh, 0px) var(--sh, 0px) calc(var(--sh, 0px) * -.4) rgb(0 0 0 / .22), inset calc(var(--sh, 0px) * .6) 0 var(--sh, 0px) calc(var(--sh, 0px) * -.4) rgb(0 0 0 / .12);
+  }
+  .mat-controls .build-title { margin-bottom: 12px; }
+  .mat-field { display: block; margin-top: 26px; font-size: 14px; }
+  .mat-field > span { display: block; font-weight: 500; margin-bottom: 10px; }
+  .mat-field output { font-variant-numeric: tabular-nums; color: var(--muted); font-weight: 400; }
+  .mat-field input[type=range] { display: block; width: 100%; height: 32px; accent-color: var(--accent); margin: -6px 0; touch-action: pan-y; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 10px; }
+  .swatches label { position: relative; cursor: pointer; }
+  .swatches input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 6px; }
+  .swatches input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .swatches i { display: block; width: 36px; height: 36px; border-radius: 50%; background: var(--c);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 0 0 3px var(--paper), 0 0 0 4px transparent; transition: box-shadow .25s; }
+  .swatches input:checked + i, .swatches .pick.on i { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .12), 0 0 0 3px var(--paper), 0 0 0 4.5px var(--ink); }
+  .swatches .pick i { background: conic-gradient(#d9534f, #e8b04b, #8fbf6a, #4aa3c7, #7a6ad8, #d9534f); }
+  .mat-controls .small { margin-top: 22px; }
+
+  /* Install */
+  .install { background: var(--wall); margin-top: clamp(112px, 14vw, 192px); padding: clamp(80px, 10vw, 144px) 0; }
+  .install .split { align-items: start; }
+  pre {
+    margin: 0; padding: 24px 26px; border-radius: 14px; background: var(--code-bg); color: var(--code-ink);
+    font: 13px/1.75 var(--mono); overflow-x: auto; white-space: pre;
+  }
+  pre .c { color: #85998b; }
+  pre .p { color: var(--accent); user-select: none; }
+  ol.after { margin: 24px 0 0; padding-left: 20px; color: var(--muted); font-size: 15px; }
+  ol.after li { margin-bottom: 6px; padding-left: 4px; }
+  ol.after strong { color: var(--ink); font-weight: 500; }
+  code { font: 13.5px var(--mono); background: color-mix(in srgb, var(--ink) 7%, transparent); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+  .needs { list-style: none; padding: 0; margin: 28px 0 0; font-size: 15px; color: var(--muted); }
+  .needs li { padding: 10px 0; border-top: 1px solid var(--line); }
+  .needs li:last-child { border-bottom: 1px solid var(--line); }
+  .needs strong { color: var(--ink); font-weight: 500; }
+
+  /* "Or paste this to your agent": the README's install prompt, with a copy button. */
+  .agent { margin-top: 48px; padding: 28px; border-radius: 18px; background: color-mix(in srgb, var(--ink) 4.5%, transparent); }
+  .agent-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+  .agent h3 { margin: 0; font: 400 22px/1.25 var(--serif); }
+  .agent > p { margin-bottom: 20px; }
+  .copy { flex: none; height: 34px; padding: 0 16px; border-radius: 999px; font: 500 13.5px var(--sans); cursor: pointer;
+    color: var(--ink); background: transparent; border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent); transition: background-color .3s, border-color .3s; }
+  .copy:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); border-color: color-mix(in srgb, var(--ink) 50%, transparent); }
+  .copy.done { border-color: var(--accent); color: var(--accent); }
+  pre.prompt { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12.5px; line-height: 1.7; }
+
+  footer { background: var(--wall); border-top: 1px solid var(--line); padding: 64px 0 80px; font-size: 14px; color: var(--muted); }
+  footer .wrap { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 24px 48px; align-items: start; }
+  footer p { margin: 0 0 6px; }
+  footer nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  footer nav .gh-mark { display: inline-block; width: 15px; height: 15px; margin-right: 6px; vertical-align: -2px; }
+  footer img { width: 106px; height: 24px; margin-bottom: 20px; }
+
+  @media (max-width: 960px) {
+    .split, .split.flip, .sensor-extra, .mat-demo { grid-template-columns: minmax(0, 1fr); gap: 40px; }
+    .rule { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  }
+  @media (max-width: 720px) {
+    body { font-size: 16px; }
+    .wrap { padding: 0 16px; }
+    /* Nav: the section links go; Install becomes a small button next to the GitHub mark. */
+    header.top { height: 64px; }
+    header.top nav { gap: 6px; }
+    header.top nav .hide-sm { display: none; }
+    header.top nav .nav-install { height: 34px; padding: 0 14px; display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; color: var(--ink); font-weight: 500; }
+    header.top nav .gh { padding: 7px; margin-right: -7px; color: var(--ink); }
+
+    .hero-copy { padding-top: 28px; }
+    h1 { font-size: clamp(40px, 11.4vw, 50px); }
+    .hero-copy .lede { margin-top: 16px; max-width: 22em; }
+    .hero-copy .actions { flex-wrap: nowrap; max-width: 420px; margin: 28px auto 0; }
+    .hero-copy .actions .button { flex: 1 1 0; justify-content: center; padding: 0 12px; }
+    /* Four features as a tight 2 x 2 grid. */
+    .features { margin-top: 32px; gap: 8px; }
+    .features a { gap: 3px; padding: 13px 13px 14px; border-radius: 12px; }
+    .features svg { width: 22px; height: 22px; margin-bottom: 4px; }
+    .features strong { font-size: 14px; }
+    .features span { font-size: 13px; line-height: 1.4; }
+    .features a:hover { transform: none; }
+
+    .gallery { --s: .62; }
+    .sources { margin: 20px auto 40px; }
+    .hero-scroll { margin-top: 40px; }
+    /* A stage a little taller than wide. In 3D it pins in the middle of the screen. */
+    .hero-stage { width: calc(100% - 32px); aspect-ratio: 4 / 5; background-image: url(images/hero-room-still-phone.webp); }
+    .hero-3d .hero-stage { width: auto; margin: 0 12px; border-radius: 18px; height: min(126vw, 84svh); background-image: url(images/hero-room-start-phone.webp); }
+    .hero-3d .hero-spacer { height: 240svh; }
+    .callout p { max-width: 200px; font-size: 12px; padding: 7px 10px 8px; }
+    .callout .long { display: none; }
+    .callout .short { display: inline; }
+
+    .shows { grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 40px; }
+    .mat-demo { gap: 28px; }
+    /* Day strip: the layout names sit above their blocks. */
+    .day { margin-top: 44px; }
+    .strip { height: 30px; }
+    .strip div { padding: 0; font-size: 0; }
+    .day .strip { overflow: visible; margin-top: 42px; }
+    .day .strip > :first-child { border-radius: 6px 0 0 6px; }
+    .day .strip > :last-child { border-radius: 0 6px 6px 0; }
+    .day .strip .l { position: relative; overflow: visible; }
+    .day .strip .l span { position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); font-size: 11.5px; color: var(--ink); }
+    /* Weather sits one line higher, with a short line down to its block, so it clears its neighbors. */
+    .day .strip .l:nth-child(4) span { bottom: calc(100% + 24px); }
+    .day .strip .l:nth-child(4)::before { content: ""; position: absolute; left: 50%; bottom: calc(100% + 4px); height: 18px; border-left: 1px solid var(--muted); opacity: .5; }
+    /* Every TV in the house: the TV and its name, then its day across the full width. */
+    .house { margin-top: 56px; }
+    .house-rows { gap: 18px; }
+    .house-row { grid-template-columns: 56px minmax(0, 1fr); gap: 8px 12px; }
+    .house-row .strip { grid-column: 1 / -1; height: 22px; border-radius: 4px; }
+    .house-row b small { display: block; font-size: 12.5px; font-weight: 400; color: var(--muted); line-height: 1.35; }
+    .house-row.ticks-row { margin-top: -10px; }
+    .house-row.ticks-row > span { display: none; }
+    .house-row.ticks-row .ticks { grid-column: 1 / -1; }
+
+    .step { width: 96px; }
+    .mini { width: 88px; }
+    .arrow { margin-top: 25px; min-width: 8px; }
+    .step b { font-size: 12.5px; }
+    .step small { font-size: 11.5px; }
+
+    pre { font-size: 12px; line-height: 1.7; padding: 18px 16px; }
+    .agent { margin-top: 40px; padding: 20px 16px; border-radius: 16px; }
+    .agent h3 { font-size: 20px; }
+    .agent pre.prompt { font-size: 11.5px; padding: 16px 14px; }
+    code { font-size: 12.5px; }
+    .actions .button { padding: 0 18px; }
+    footer { padding: 44px 0 48px; }
+    footer .wrap { grid-template-columns: minmax(0, 1fr); }
+    footer nav a { padding: 6px 0; }
+  }
+</style>
+<script>
+// Pick the hero before the page paints: the 3D room when the browser has WebGL and the reader allows
+// motion, so the page never shows one hero and then swaps to the other.
+(() => {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2') || document.createElement('canvas').getContext('webgl');
+    if (!gl) return;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    document.documentElement.classList.add('hero-3d');
+  } catch {}
+})();
+</script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="logo" href="./" aria-label="Art Frames home">
+      <img src="images/lockup-green.svg" alt="Art Frames" width="124" height="28">
+    </a>
+    <nav>
+      <a class="hide-sm" href="#art">Art</a>
+      <a class="hide-sm" href="#layouts">Layouts</a>
+      <a class="hide-sm" href="#sensor">Sensor</a>
+      <a class="hide-sm" href="#customize">Customize</a>
+      <a class="nav-install" href="#install">Install</a>
+      <a class="gh" href="https://github.com/brianmuse/art-frames" aria-label="GitHub"><svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg></a>
+    </nav>
+  </header>
+</div>
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-copy">
+      <p class="eyebrow">Open source Frame TV software</p>
+      <h1>Do more with your Frame TVs.</h1>
+      <p class="lede">It runs on a small server in your home, with no cloud account.</p>
+      <div class="actions">
+        <a class="button" href="#install">Install</a>
+        <a class="button quiet" href="https://github.com/brianmuse/art-frames">View on GitHub</a>
+      </div>
+      <ul class="features">
+        <li><a href="#art"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5"/><rect x="6" y="8" width="12" height="8"/><path d="M6 14l3.5-3 3 2.5 2-1.5L18 14"/></svg><strong>Art libraries</strong><span>Public-domain art from three museums, new each day.</span></a></li>
+        <li><a href="#layouts"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg><strong>Scheduling</strong><span>Layouts at the times you choose, art the rest of the day.</span></a></li>
+        <li><a href="#customize"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="M13 9h5M13 12h5M13 15h3"/></svg><strong>Custom overlays</strong><span>Your calendar, weather or your own page over the art.</span></a></li>
+        <li><a href="#sensor"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="1.6"/><path d="M8.5 8.5a5 5 0 0 0 0 7M15.5 8.5a5 5 0 0 1 0 7M5.7 5.7a9 9 0 0 0 0 12.6M18.3 5.7a9 9 0 0 1 0 12.6"/></svg><strong>External sensors</strong><span>On when you walk in, even when a frame covers the TV’s sensor.</span></a></li>
+      </ul>
+    </div>
+
+    <div class="hero-scroll" data-hero-scroll>
+      <div class="hero-stage" data-hero-stage role="img" aria-label="A bedroom with a Frame TV in a walnut frame. The TV shows the Morning layout, the weather and today's calendar, over Monet's Water Lilies.">
+        <div class="story" data-story aria-hidden="true">
+          <svg class="leaders" aria-hidden="true"><path data-leader="0"/><path data-leader="1"/><path data-leader="2"/></svg>
+          <div class="callout" data-callout="0" data-anchor="calendar"><i class="dot"></i><p><small>7:00 AM &middot; Morning layout</small><span class="long">Your calendar and the weather, over the art.</span><span class="short">Calendar and weather, over the art.</span></p></div>
+          <div class="callout" data-callout="2" data-anchor="sensor"><i class="dot"></i><p><small>External sensor support</small><span class="long">A frame over the TV hides its built-in light sensor. Add a small room sensor, and it sets the brightness and wakes the screen when you walk in.</span><span class="short">Frame covers the TV's sensor? A room sensor sets the brightness and wakes the screen.</span></p></div>
+          <div class="callout" data-callout="1" data-anchor="art"><i class="dot"></i><p><small>9:00 AM &middot; Art Mode</small><span class="long">On schedule, the layout steps aside. Just the art.</span><span class="short">On schedule, back to just the art.</span></p></div>
+        </div>
+      </div>
+      <div class="hero-spacer" aria-hidden="true"></div>
+    </div>
+
+    <div class="gallery-row">
+      <div class="gallery" role="img" aria-label="Rows of public-domain artworks in frames with even mats, drifting slowly: paintings by Bruegel, Vermeer, Van Gogh, Monet, Manet, Degas, Cézanne, Seurat, Renoir, Turner, Church, Bierstadt, Heade, Homer and Leutze, and a print by Hokusai.">
+        <div class="track"></div>
+        <div class="track"></div>
+      </div>
+      <p class="sources wrap">From the open-access collections of The Met, the Art Institute of Chicago and the Cleveland Museum of Art.</p>
+    </div>
+  </section>
+
+  <section class="part wrap" id="art">
+    <div class="split">
+      <div>
+        <p class="eyebrow">Art</p>
+        <h2>A new painting every morning.</h2>
+        <p class="lede">Search three museum collections and add a piece with one click. Or upload your own. Art Frames picks the next one each day, in order or shuffled.</p>
+        <ul class="points">
+          <li><strong>Three museums.</strong> The Cleveland Museum of Art, the Met and the Art Institute of Chicago. Only public-domain images.</li>
+          <li><strong>A mat for each piece.</strong> Fit or zoom, the focal point, and the mat's width and color.</li>
+          <li><strong>Sent in 4K.</strong> Art Frames makes the full image, mat included, and sends it to the TV.</li>
+        </ul>
+      </div>
+      <figure>
+        <div class="window">
+          <div class="bar"><i></i><i></i><i></i><span>Artwork · Find art</span></div>
+          <img src="images/crop-find-art.webp" width="1600" height="784" loading="lazy"
+               alt="The Find art page: a search for Monet in the Cleveland Museum of Art, with three public-domain results.">
+        </div>
+        <figcaption>Find art: search, then add to your collection.</figcaption>
+      </figure>
+    </div>
+
+    <div class="mat-demo" id="mat">
+      <div class="tv mat-tv">
+        <div class="screen" data-mat-stage>
+          <div class="mat-open" data-mat-open><img src="images/mat-demo.webp" width="1200" height="884" loading="lazy"
+               alt="Pieter Bruegel the Elder, The Harvesters, in a mat on the TV."></div>
+        </div>
+      </div>
+      <div class="mat-controls">
+        <h3 class="build-title">Try a mat.</h3>
+        <p class="muted">With <b>Fill the screen</b>, the mat is the same width on all four sides. Art Frames crops the art to fit inside it.</p>
+        <label class="mat-field"><span>Mat width · <output data-mat-width>5%</output></span>
+          <input type="range" min="0" max="0.1" step="0.005" value="0.05" data-mat-range></label>
+        <div class="mat-field"><span>Mat color</span>
+          <div class="swatches" data-mat-colors>
+            <label title="Warm white"><input type="radio" name="mat-color" value="#e9e2d7" checked><i style="--c:#e9e2d7"></i></label>
+            <label title="White"><input type="radio" name="mat-color" value="#f7f6f2"><i style="--c:#f7f6f2"></i></label>
+            <label title="Sage"><input type="radio" name="mat-color" value="#8c977f"><i style="--c:#8c977f"></i></label>
+            <label title="Navy"><input type="radio" name="mat-color" value="#2a3647"><i style="--c:#2a3647"></i></label>
+            <label title="Black"><input type="radio" name="mat-color" value="#1d1b19"><i style="--c:#1d1b19"></i></label>
+            <label class="pick" title="Any color"><input type="color" value="#a5553f" data-mat-custom><i></i></label>
+          </div>
+        </div>
+        <p class="small muted">Up to 10% of the screen height. Set the width to zero for no mat. In the app, pick any color.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="part" id="layouts">
+    <div class="wrap">
+      <div class="head center">
+        <p class="eyebrow">Layouts</p>
+        <h2>The right screen at the right time.</h2>
+        <p class="lede">A layout is a small website, such as a morning dashboard. Put layouts on a weekly schedule. Outside those times, the TV shows art.</p>
+      </div>
+
+      <div class="day" role="img" aria-label="A sample day: art until 6 AM, the Morning dashboard 6 to 9 AM, art, Weather 11 AM to 1 PM, Photos 1 to 4 PM, art, News and weather 5 to 8 PM, then art.">
+        <div class="strip">
+          <div style="flex:6">Art</div>
+          <div class="l" style="flex:3"><span>Morning</span></div>
+          <div style="flex:2">Art</div>
+          <div class="l" style="flex:2"><span>Weather</span></div>
+          <div class="l" style="flex:3"><span>Photos</span></div>
+          <div style="flex:1"></div>
+          <div class="l" style="flex:3"><span>News</span></div>
+          <div style="flex:4">Art</div>
+        </div>
+        <div class="ticks"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div>
+      </div>
+
+      <div class="shows">
+        <figure>
+          <div class="tv"><div class="screen"><img src="images/tv-morning-busy-1280.webp" srcset="images/tv-morning-busy-1280.webp 1280w, images/tv-morning-busy.webp 1920w" sizes="(max-width: 720px) calc(100vw - 32px), (max-width: 1120px) calc(50vw - 58px), 502px" width="1920" height="1080" loading="lazy" alt="The Morning dashboard: the weather and the day's events grouped by calendar, over a painting."></div></div>
+          <figcaption><b>Morning dashboard</b>6–9 AM. Your calendars and the weather.</figcaption>
+        </figure>
+        <figure>
+          <div class="tv"><div class="screen"><img src="images/tv-weather-1280.webp" srcset="images/tv-weather-1280.webp 1280w, images/tv-weather.webp 1920w" sizes="(max-width: 720px) calc(100vw - 32px), (max-width: 1120px) calc(50vw - 58px), 502px" width="1920" height="1080" loading="lazy" alt="The Weather layout: Boston now, the hours ahead and the next seven days, over Church's Twilight in the Wilderness."></div></div>
+          <figcaption><b>Weather</b>11 AM–1 PM. Today first, then the week.</figcaption>
+        </figure>
+        <figure>
+          <div class="tv"><div class="screen"><img src="images/tv-photos-1280.webp" srcset="images/tv-photos-1280.webp 1280w, images/tv-photos.webp 1920w" sizes="(max-width: 720px) calc(100vw - 32px), (max-width: 1120px) calc(50vw - 58px), 502px" width="1920" height="1080" loading="lazy" alt="The Photos layout: a public-domain photograph of a tree in a wide valley."></div></div>
+          <figcaption><b>Photos</b>1–4 PM. A photo and its date.</figcaption>
+        </figure>
+        <figure>
+          <div class="tv"><div class="screen"><img src="images/tv-news-busy-1280.webp" srcset="images/tv-news-busy-1280.webp 1280w, images/tv-news-busy.webp 3840w" sizes="(max-width: 720px) calc(100vw - 32px), (max-width: 1120px) calc(50vw - 58px), 502px" width="1920" height="1080" loading="lazy" alt="The News and weather layout: Boston weather and seven made-up headlines over a Turner painting."></div></div>
+          <figcaption><b>News &amp; weather</b>5–8 PM. Headlines and the forecast.</figcaption>
+        </figure>
+      </div>
+
+      <div class="house">
+        <h3>Every TV in the house</h3>
+        <p class="small muted">One server runs up to eight TVs. Each TV has its own layout schedule, sensor settings and mat. All TVs share one art library, and each TV gets a different painting each day when you have enough art.</p>
+        <div class="house-rows" role="img" aria-label="Three TVs with their own schedules. Den: the Morning dashboard 6 to 9 AM, art the rest of the day. Living room: art, then News and weather 5 to 8 PM. Kitchen: Morning 6 to 9 AM, Weather 11 AM to 1 PM, then art. Each TV shows a different painting.">
+          <div class="house-row">
+            <span class="house-tv"><img src="images/gallery-monet.webp" alt="" loading="lazy"></span><b>Den<small>Morning 6–9 AM</small></b>
+            <div class="strip"><div style="flex:6"></div><div class="l" style="flex:3">Morning</div><div style="flex:15"></div></div>
+          </div>
+          <div class="house-row">
+            <span class="house-tv"><img src="images/gallery-vermeer.webp" alt="" loading="lazy" style="object-position:50% 25%"></span><b>Living room<small>News &amp; weather 5–8 PM</small></b>
+            <div class="strip"><div style="flex:17"></div><div class="l" style="flex:3">News</div><div style="flex:4"></div></div>
+          </div>
+          <div class="house-row">
+            <span class="house-tv"><img src="images/gallery-wave.webp" alt="" loading="lazy"></span><b>Kitchen<small>Morning 6–9 AM · Weather 11 AM–1 PM</small></b>
+            <div class="strip"><div style="flex:6"></div><div class="l" style="flex:3">Morning</div><div style="flex:2"></div><div class="l" style="flex:2">Weather</div><div style="flex:11"></div></div>
+          </div>
+          <div class="house-row ticks-row"><span></span><span></span><div class="ticks"><span>12 AM</span><span>6 AM</span><span>12 PM</span><span>6 PM</span><span>12 AM</span></div></div>
+        </div>
+      </div>
+
+      <p class="note small muted">Real 4K renders with made-up data: the events, names, headlines and weather are samples. These layouts live in <a href="https://github.com/brianmuse/art-frames-layouts">art-frames-layouts</a>. The install file runs Morning dashboard, News &amp; weather and Weather. To add Photos or your own layout, use a <a href="https://github.com/brianmuse/art-frames/blob/main/docs/cli-deployment.md#layouts">source install</a>.</p>
+    </div>
+  </section>
+
+  <section class="part wrap" id="sensor">
+    <div class="head">
+      <p class="eyebrow">Room sensor · optional</p>
+      <h2>On when you walk in. Dark when you leave.</h2>
+      <p class="lede">A deep frame can cover the TV's own motion sensor. Add a small ESPHome presence sensor, and Art Frames runs the screen for you.</p>
+    </div>
+
+    <div class="rules" style="margin-top:48px">
+      <div class="rule">
+        <div><h3>You walk in</h3><p>Inside your hours, 7 AM to 11 PM by default.</p></div>
+        <div class="steps">
+          <div class="step"><div class="mini off"><span></span></div><b>Off</b></div>
+          <div class="arrow"></div>
+          <div class="step"><div class="mini"><span></span></div><b>On</b><small>at once</small></div>
+        </div>
+      </div>
+      <div class="rule">
+        <div><h3>You leave</h3><p>The room is empty. These are the default times. You can change each one.</p></div>
+        <div class="steps">
+          <div class="step"><div class="mini dim"><span></span></div><b>Dim</b><small>at once</small></div>
+          <div class="arrow"></div>
+          <div class="step"><div class="mini blank"><span></span></div><b>Blank</b><small>after 15 min</small></div>
+          <div class="arrow"></div>
+          <div class="step"><div class="mini off"><span></span></div><b>Off</b><small>after about 35 min</small></div>
+        </div>
+      </div>
+      <div class="rule">
+        <div><h3>The lights go out</h3><p>The room is darker than 5 lux by default, even with someone there.</p></div>
+        <div class="steps">
+          <div class="step"><div class="mini blank"><span></span></div><b>Blank</b><small>at once</small></div>
+          <div class="arrow"></div>
+          <div class="step"><div class="mini off"><span></span></div><b>Off</b><small>about 5 min later</small></div>
+          <div class="arrow"></div>
+          <div class="step"><div class="mini"><span></span></div><b>On again</b><small>when the light is back and someone is there</small></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sensor-extra">
+      <figure>
+        <div class="window">
+          <div class="bar"><i></i><i></i><i></i><span>Sensor</span></div>
+          <img src="images/crop-sensor.webp" width="1500" height="444" loading="lazy"
+               alt="The Sensor page: sensor control on, the sensor is connected, someone is here, and the room light sets the brightness.">
+        </div>
+        <figcaption>With a light reading, the brightness follows the room.</figcaption>
+      </figure>
+      <ul class="needs" style="margin-top:0">
+        <li><strong>Hardware.</strong> Any ESPHome presence sensor, for example one with an LD2410 mmWave radar. Art Frames knows Apollo, Everything Presence, SCREEK, Seeed MR60 and Akamatis devices.</li>
+        <li><strong>Local only.</strong> Art Frames finds the sensor on your network and reads it over the ESPHome native API.</li>
+        <li><strong>How "off" works.</strong> In Art Mode, the Frame ignores the power key. Art Frames sets the TV's own Sleep After timer, and puts yours back when you stop.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="part wrap" id="customize">
+    <div class="build split flip">
+      <div>
+        <p class="eyebrow">Make your own</p>
+        <h2>Your own layout, over the art.</h2>
+        <p class="muted">A layout is a small website that sits over the day's painting like an overlay. Write it in plain HTML, or use a framework such as Astro. Art Frames turns the page into a 3840×2160 image and sends it to the TV at the times on your schedule.</p>
+        <ul class="points">
+          <li><strong>It sees the art.</strong> Ask for the artwork, and each render gets the painting and its details. With a mat, it also gets the mat opening. Place your text where it reads well, and keep it inside the mat.</li>
+          <li><strong>Settings for free.</strong> Declare settings in <code>layout.json</code>, and Art Frames makes the settings page. Private values, such as API keys, stay on your server.</li>
+          <li><strong>Options for each TV.</strong> Add on/off options that each TV keeps for itself, such as "show the caption".</li>
+          <li><strong>Server-side only.</strong> No JavaScript runs in the render. Bundle your fonts and images.</li>
+        </ul>
+        <div class="actions">
+          <a class="button quiet" href="https://github.com/brianmuse/art-frames-layouts#write-a-layout">Write a layout</a>
+          <a class="button quiet" href="https://github.com/brianmuse/art-frames/blob/main/docs/layouts.md">Layout packages</a>
+        </div>
+      </div>
+      <figure>
+<pre><span class="c">// layout.json</span>
+{
+  "schema_version": 1,
+  "id": "my-layout",
+  "name": "My layout",
+  "entry": "index.html",
+  "network": "bridge",
+  "artwork": true,
+  "settings": [
+    { "key": "city", "type": "text",
+      "label": "Weather location" }
+  ],
+  "display_settings": [
+    { "key": "show_caption", "type": "boolean",
+      "label": "Show the caption", "default": true }
+  ]
+}</pre>
+        <figcaption>A layout is a folder with a <code>layout.json</code> and a Dockerfile. Start from one of the four layouts in <a href="https://github.com/brianmuse/art-frames-layouts">art-frames-layouts</a>: Morning dashboard, News &amp; weather, Weather and Photos.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="install" id="install">
+    <div class="wrap split flip">
+      <div>
+        <p class="eyebrow">Install</p>
+        <h2>Runs on a home server or a NAS.</h2>
+        <p class="lede">Install it with Docker on any computer that stays on. It needs no cloud account. On a NAS, you can do every step in its Docker app.</p>
+        <ul class="needs">
+          <li><strong>A Samsung The Frame</strong> on the same home network.</li>
+          <li><strong>A fixed IP address for the TV.</strong> Reserve it in your router.</li>
+          <li><strong>Docker</strong> on a NAS or other always-on home server, 64-bit (amd64 or arm64). A Raspberry Pi 4 or 5 with a 64-bit OS should work too, but it is not on the compatibility list yet.</li>
+        </ul>
+        <div class="actions">
+          <a class="button" href="https://github.com/brianmuse/art-frames#install">Read the install guide</a>
+          <a class="button quiet" href="https://github.com/brianmuse/art-frames/blob/main/docs/compatibility.md">Compatibility</a>
+        </div>
+      </div>
+      <div>
+<pre><span class="c"># In an empty folder, such as art-frames</span>
+<span class="p">$ </span>curl -O https://raw.githubusercontent.com/brianmuse/\
+art-frames/main/install/docker-compose.yml
+<span class="p">$ </span>docker compose up -d
+<span class="p">$ </span>docker compose logs art-frames</pre>
+        <ol class="after">
+          <li>Open the <strong>setup link</strong> from the log on your phone or computer.</li>
+          <li>Create a password.</li>
+          <li>Add your TV and pair it. Select <strong>Allow</strong> on the TV.</li>
+          <li>Choose what it shows.</li>
+        </ol>
+        <p class="small muted" style="margin-top:24px">On Synology, Unraid or Portainer, paste <a href="https://github.com/brianmuse/art-frames/blob/main/install/docker-compose.yml"><code>docker-compose.yml</code></a> into the Docker app instead. This is an early release: it needs tests on more TV models.</p>
+        <div class="agent">
+          <div class="agent-head">
+            <h3>Or paste this to your agent</h3>
+            <button class="copy" type="button" data-copy="agent-prompt">Copy</button>
+          </div>
+          <p class="small muted">Your agent needs access to your server, over SSH or a terminal on it. You still create the password yourself.</p>
+<pre class="prompt" id="agent-prompt">Install Art Frames on my home server: https://github.com/brianmuse/art-frames
+
+1. Check the server: 64-bit (amd64 or arm64), Docker with Compose, on the same home network as my Samsung The Frame TV. Tell me what is missing instead of installing system packages.
+2. Make a folder named art-frames, and download install/docker-compose.yml from the repository's main branch into it. Show me the file before you start it.
+3. Run `docker compose up -d` in that folder, then `docker compose logs art-frames`.
+4. Give me the address and the setup link from the log. Stop there: I open the link and create the password myself.
+Do not forward ports on my router, and do not change other containers.</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <img src="images/lockup-green.svg" alt="Art Frames" width="106" height="24" loading="lazy">
+      <p>Free software under the <a href="https://github.com/brianmuse/art-frames/blob/main/LICENSE">MIT License</a>.</p>
+      <p>The museum art is in the public domain. See the <a href="https://github.com/brianmuse/art-frames/blob/main/docs/images/CREDITS.md">image credits</a>.</p>
+      <p>Samsung and The Frame are trademarks of Samsung. Art Frames is not affiliated with Samsung.</p>
+    </div>
+    <nav>
+      <a href="https://github.com/brianmuse/art-frames"><svg class="gh-mark" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>art-frames</a>
+      <a href="https://github.com/brianmuse/art-frames-layouts"><svg class="gh-mark" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>art-frames-layouts</a>
+      <a href="https://github.com/brianmuse/art-frames/tree/main/docs">Docs</a>
+    </nav>
+  </div>
+</footer>
+<script>
+// The 3D hero (see the <head> script and the hero CSS). One progress value (0 to 1) runs through the
+// pinned stage, split into phases; each phase gets its own 0-to-1 value. The room is
+// vendor/hero-room.js, built from site/hero-room/.
+(() => {
+  const root = document.documentElement;
+  const scroller = document.querySelector('[data-hero-scroll]');
+  if (!scroller || !root.classList.contains('hero-3d')) return;
+  const stage = scroller.querySelector('[data-hero-stage]');
+  const wide = matchMedia('(min-width: 721px)');
+
+  // Phases in scroll order: [name, start, end] as parts of the whole progress. The camera moves in
+  // from 6:45 to 7:00 AM, the TV turns on at 7:00, the Morning layout shows until 9:00, then it fades
+  // to the art and holds. Last, the camera moves to the room sensor, and the page holds there.
+  const phases = [['move', 0, .18], ['day', .18, .56], ['fade', .56, .64], ['art', .64, .74], ['sensor', .74, .9], ['hold', .9, 1]];
+  const phase = (progress, name) => {
+    const [, start, end] = phases.find(p => p[0] === name);
+    return Math.min(1, Math.max(0, (progress - start) / (end - start)));
+  };
+  // Whole progress: the stage holds while the spacer after it scrolls by. It starts once the stage is
+  // mostly in view, or right away if the page loads with it there.
+  const progress = () => {
+    const box = scroller.getBoundingClientRect();
+    const lead = Math.min(innerHeight * .3, box.top + scrollY - 1), run = Math.max(1, box.height - stage.offsetHeight);
+    return Math.min(1, Math.max(0, (lead - box.top) / (lead + run * .9)));
+  };
+
+  let room = null;
+  // Callouts, in story order: the Morning layout, the art, then the room sensor in the last shot.
+  const story = stage.querySelector('[data-story]');
+  const callouts = [...story.querySelectorAll('[data-callout]')];
+  const leaders = [...story.querySelectorAll('[data-leader]')];
+  const placeStory = (minutes, toSensor) => {
+    // Each callout stays up for its whole phase: the layout from 7:00 until the 9:00 fade, the art until the camera leaves for the sensor.
+    const showing = [minutes >= 421 && minutes < 540, minutes >= 540 && toSensor < .45, toSensor > .6];
+    const r = room.tvRect(), pts = room.points();
+    if (!r || !pts) return;
+    const narrow = !wide.matches, W = stage.clientWidth, H = stage.clientHeight, gap = narrow ? 14 : 30;
+    callouts.forEach(el => {
+      const i = Number(el.dataset.callout), line = leaders[i];
+      const a = pts[el.dataset.anchor], box = el.querySelector('p'), dot = el.querySelector('.dot');
+      const w = box.offsetWidth, h = box.offsetHeight;
+      const on = showing[i] && a.y > 4 && a.y < H - 4;
+      el.classList.toggle('on', on); line.classList.toggle('on', on);
+      if (!on) return;
+      dot.style.transform = `translate(${a.x}px, ${a.y}px)`;
+      let x, y, d, origin;
+      const fit = v => Math.min(W - 12 - w, Math.max(12, v));
+      if (narrow) {
+        // Phones: the box sits just under the TV (or above the sensor), with a straight line down.
+        x = fit(a.x - w / 2);
+        if (el.dataset.anchor === 'sensor') { y = a.y + 30; d = `M${a.x} ${a.y}V${y}`; origin = 'center top'; } // over the credenza, clear of the TV
+        else { y = r.bottom + gap; d = `M${a.x} ${a.y}V${y}`; origin = 'center top'; }
+      } else if (el.dataset.anchor === 'calendar') {
+        // To the right of the frame, level with the dot: one straight line out.
+        x = r.right + gap; y = a.y - h / 2; d = `M${a.x} ${a.y}H${x}`; origin = 'left center';
+      } else if (el.dataset.anchor === 'art') {
+        // Under the frame: a line straight down from the dot.
+        x = fit(a.x - 28); y = r.bottom + gap; d = `M${a.x} ${a.y}V${y}`; origin = '28px top';
+      } else {
+        // Up and to the left of the sensor: one elbow.
+        x = fit(a.x - 44 - w); y = a.y - 84 - h / 2; d = `M${a.x} ${a.y}V${y + h / 2}H${x + w}`; origin = 'right center';
+      }
+      box.style.left = `${Math.round(x)}px`; box.style.top = `${Math.round(y)}px`;
+      box.style.setProperty('--origin', origin);
+      line.setAttribute('d', d);
+    });
+  };
+  let queued = false;
+  const draw = () => {
+    queued = false;
+    // A stage as tall as the screen pins at the top. A shorter one (a phone) pins in the middle.
+    const gap = innerHeight - stage.offsetHeight;
+    stage.style.top = `${gap < 0 ? gap : gap / 2}px`;
+    if (!room) return;
+    const p = progress(), toSensor = phase(p, 'sensor');
+    // Minutes after midnight: 6:45 to 7:00 while moving in, 7:00 to 9:00, 9:00 to 9:10 for the fade,
+    // then on to 9:40 while the camera moves to the sensor (the sun gets stronger).
+    const minutes = 405 + 15 * phase(p, 'move') + 120 * phase(p, 'day') + 10 * phase(p, 'fade') + 30 * toSensor;
+    room.render(phase(p, 'move'), minutes, toSensor);
+    placeStory(minutes, toSensor);
+  };
+  const queue = () => { if (!queued) { queued = true; requestAnimationFrame(draw); } };
+  addEventListener('scroll', queue, { passive: true });
+  addEventListener('resize', queue, { passive: true });
+  draw();
+
+  // Start the downloads now. Build the room after the first paint, at any scroll position (a reload
+  // can restore one mid-hero). The layout is the same with or without the room, so nothing moves.
+  const picture = async src => { const image = new Image(); image.src = src; await image.decode(); return image; };
+  const painted = new Promise(done => requestAnimationFrame(() => setTimeout(done)));
+  const size = wide.matches ? '' : '-1280'; // full 1920 files on wide screens, so the screen stays sharp
+  (async () => {
+    try {
+      const [{ createHeroRoom }, busy, art] = await Promise.all([
+        import('./vendor/hero-room.js'), picture(`images/tv-morning-busy${size}.webp`), picture(`images/tv-morning-art${size}.webp`), painted,
+      ]);
+      room = createHeroRoom({ stage, busy, art, dark: false, compact: !wide.matches });
+      if (!room) throw new Error('No WebGL context');
+      const layer = document.createElement('div');
+      layer.className = 'hero-room';
+      layer.append(room.canvas);
+      stage.prepend(layer);
+      draw();
+      // The live room fades in over the picture of its first frame.
+      requestAnimationFrame(() => layer.classList.add('ready'));
+    } catch (error) {
+      // Fall back to the still picture of the room.
+      console.warn('Hero room failed to load', error);
+      room?.dispose(); room = null;
+      root.classList.remove('hero-3d'); stage.style.top = '';
+    }
+  })();
+})();
+
+// Gallery: two rows of framed artworks that drift in opposite directions. Each row shows its own
+// artworks, then a copy of them, so the loop has no seam.
+(() => {
+  const rows = [
+    ['church', 'vermeer:50% 25%', 'wave', 'bedroom', 'harvesters', 'degas:50% 60%', 'boating', 'monet', 'leutze'],
+    ['seurat', 'turner', 'cypresses', 'renoir:50% 40%', 'bierstadt', 'cezanne', 'heade', 'homer', 'manet-garden'],
+  ];
+  const piece = entry => {
+    const [name, position] = entry.split(':');
+    return `<figure class="piece"><img src="images/gallery-${name}.webp" alt="" decoding="async"${position ? ` style="object-position:${position}"` : ''}></figure>`;
+  };
+  document.querySelectorAll('.gallery .track').forEach((track, row) => {
+    const set = rows[row].map(piece).join('');
+    track.innerHTML = set + set;
+    track.style.setProperty('--t', `${[120, 140][row]}s`);
+  });
+})();
+
+// Copy buttons: copy the text of the element that data-copy names. Falls back to a hidden textarea
+// where the Clipboard API is missing (plain HTTP, older browsers).
+document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async () => {
+  const text = document.getElementById(button.dataset.copy).textContent;
+  let copied = false;
+  try { await navigator.clipboard.writeText(text); copied = true; } catch {
+    const area = Object.assign(document.createElement('textarea'), { value: text });
+    area.setAttribute('readonly', ''); area.style.cssText = 'position:fixed;opacity:0';
+    document.body.append(area); area.select();
+    try { copied = document.execCommand('copy'); } catch {}
+    area.remove();
+  }
+  button.textContent = copied ? 'Copied' : 'Select and copy';
+  button.classList.toggle('done', copied);
+  clearTimeout(button.timer);
+  button.timer = setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('done'); }, 2000);
+}));
+
+// Mat demo: the same math as the app's framing preview. The mat is round(2160 × width) pixels on a
+// 3840 × 2160 screen, so it is the same on all four sides.
+(() => {
+  const stage = document.querySelector('[data-mat-stage]');
+  if (!stage) return;
+  const opening = stage.querySelector('[data-mat-open]');
+  const range = document.querySelector('[data-mat-range]');
+  const label = document.querySelector('[data-mat-width]');
+  const custom = document.querySelector('[data-mat-custom]');
+  let color = '#e9e2d7';
+  const draw = () => {
+    const width = Number(range.value), border = Math.round(2160 * width), scale = stage.clientWidth / 3840;
+    const rgb = color.match(/[a-f\d]{2}/gi).map(value => parseInt(value, 16));
+    label.textContent = width ? `${Number((width * 100).toFixed(1))}%` : 'Off';
+    stage.style.backgroundColor = color;
+    opening.style.inset = `${border / 2160 * 100}% ${border / 3840 * 100}%`;
+    opening.style.setProperty('--d', border ? `${Math.max(1, Math.min(6, border) * scale)}px` : '0px');
+    opening.style.setProperty('--sh', border ? `${Math.max(2, Math.min(10, border) * scale)}px` : '0px');
+    opening.style.setProperty('--shade', `rgb(${rgb.map(c => Math.round(c * .88)).join(',')})`);
+    opening.style.setProperty('--light', `rgb(${rgb.map(c => Math.round(c + (255 - c) * .38)).join(',')})`);
+  };
+  range.addEventListener('input', draw);
+  document.querySelectorAll('[data-mat-colors] input[type=radio]').forEach(input =>
+    input.addEventListener('change', () => { custom.parentElement.classList.remove('on'); color = input.value; draw(); }));
+  custom.addEventListener('input', () => {
+    document.querySelectorAll('[data-mat-colors] input[type=radio]').forEach(input => { input.checked = false; });
+    custom.parentElement.classList.add('on'); color = custom.value; draw();
+  });
+  addEventListener('resize', draw);
+  draw();
+})();
+</script>
+</body>
+</html>

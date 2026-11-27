@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" role="img" aria-labelledby="t d">
+  <title id="t">How the presence sensor works</title>
+  <desc id="d">An ESPHome presence sensor sends presence readings to Art Frames over the ESPHome native API. Art Frames turns the Frame TV on when someone comes in during the set hours, and dims, blanks and turns it off when the room is empty.</desc>
+  <style>
+    .bg { fill: #f6f3ee; }
+    .card { fill: #ffffff; stroke: #d9d2c6; stroke-width: 1.5; }
+    .h { font: 600 22px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #24211d; }
+    .p { font: 400 16px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #5b554c; }
+    .s { font: 400 14px ui-monospace, SFMono-Regular, Menlo, monospace; fill: #6b6459; }
+    .lab { font: 500 15px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #3b362f; }
+    .k { font: 600 13px system-ui, -apple-system, "Segoe UI", sans-serif; fill: #8a6d4b; letter-spacing: .08em; }
+    .line { stroke: #8a6d4b; stroke-width: 2; fill: none; }
+    .dash { stroke: #b9ad9c; stroke-width: 2; fill: none; stroke-dasharray: 5 6; }
+    .step { fill: #efe9df; }
+    .stepon { fill: #e4d6c2; }
+    .dot { fill: #8a6d4b; }
+  </style>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10z" fill="#8a6d4b"/>
+    </marker>
+  </defs>
+  <rect class="bg" width="1200" height="600" rx="20"/>
+
+  <!-- Nodes -->
+  <g transform="translate(40 48)">
+    <rect class="card" width="300" height="200" rx="14"/>
+    <text class="k" x="24" y="38">SENSOR</text>
+    <text class="h" x="24" y="72">Presence sensor</text>
+    <text class="p" x="24" y="102">ESPHome device with an</text>
+    <text class="p" x="24" y="124">mmWave radar, such as</text>
+    <text class="p" x="24" y="146">an LD2410. Optional</text>
+    <text class="p" x="24" y="168">light sensor (lux).</text>
+    <!-- radar arcs -->
+    <g transform="translate(262 52)" class="line" stroke-linecap="round">
+      <circle class="dot" r="5"/>
+      <path d="M10 -10a14 14 0 0 1 0 20"/>
+      <path d="M16 -18a25 25 0 0 1 0 36" opacity=".6"/>
+    </g>
+  </g>
+
+  <g transform="translate(450 48)">
+    <rect class="card" width="300" height="200" rx="14"/>
+    <text class="k" x="24" y="38">YOUR SERVER</text>
+    <text class="h" x="24" y="72">Art Frames</text>
+    <text class="p" x="24" y="102">Runs on a NAS, a Pi or</text>
+    <text class="p" x="24" y="124">any always-on computer.</text>
+    <text class="p" x="24" y="146">Checks each TV's sensor</text>
+    <text class="p" x="24" y="168">every 5 seconds.</text>
+  </g>
+
+  <g transform="translate(860 48)">
+    <rect class="card" width="300" height="200" rx="14"/>
+    <text class="k" x="24" y="38">TV</text>
+    <text class="h" x="24" y="72">The Frame</text>
+    <text class="p" x="24" y="102">In Art Mode. A deep frame</text>
+    <text class="p" x="24" y="124">can cover the TV's own</text>
+    <text class="p" x="24" y="146">motion sensor, so the TV</text>
+    <text class="p" x="24" y="168">can't see who is there.</text>
+  </g>
+
+  <!-- Links -->
+  <path class="line" d="M340 120H446" marker-end="url(#a)"/>
+  <path class="line" d="M750 120H856" marker-end="url(#a)"/>
+
+  <g transform="translate(40 280)">
+    <text class="lab" x="0" y="0">How Art Frames reads the sensor</text>
+    <text class="s" x="0" y="30">1  Finds it by mDNS: _esphomelib._tcp</text>
+    <text class="s" x="0" y="54">2  Reads presence over the ESPHome native API, TCP 6053</text>
+    <text class="s" x="18" y="78">(with the encryption key, if the sensor has one)</text>
+    <text class="s" x="0" y="102">3  Without a key, falls back to the web server, /events on port 80</text>
+  </g>
+  <g transform="translate(860 280)">
+    <text class="lab" x="0" y="0">How it talks to the TV</text>
+    <text class="s" x="0" y="30">Samsung's local API,</text>
+    <text class="s" x="0" y="54">ports 8001 and 8002.</text>
+    <text class="s" x="0" y="78">No cloud account.</text>
+  </g>
+
+  <!-- Timeline -->
+  <g transform="translate(40 420)">
+    <text class="lab" x="0" y="0">What the TV does, with the default times</text>
+    <g transform="translate(0 20)">
+      <rect class="stepon" width="250" height="120" rx="12"/>
+      <text class="h" x="20" y="40" style="font-size:18px">Someone comes in</text>
+      <text class="p" x="20" y="68">Screen on, only inside</text>
+      <text class="p" x="20" y="90">the hours you set</text>
+    </g>
+    <g transform="translate(280 20)">
+      <rect class="step" width="250" height="120" rx="12"/>
+      <text class="h" x="20" y="40" style="font-size:18px">Room empty</text>
+      <text class="p" x="20" y="68">Dims to the lowest</text>
+      <text class="p" x="20" y="90">level at once</text>
+    </g>
+    <g transform="translate(560 20)">
+      <rect class="step" width="250" height="120" rx="12"/>
+      <text class="h" x="20" y="40" style="font-size:18px">After 15 min</text>
+      <text class="p" x="20" y="68">Blanks the screen</text>
+      <text class="p" x="20" y="90">(a black image)</text>
+    </g>
+    <g transform="translate(840 20)">
+      <rect class="step" width="280" height="120" rx="12"/>
+      <text class="h" x="20" y="40" style="font-size:18px">After 30 min</text>
+      <text class="p" x="20" y="68">Turns the TV off with its</text>
+      <text class="p" x="20" y="90">own Sleep After timer</text>
+    </g>
+    <path class="dash" d="M252 80H278M532 80H558M812 80H838"/>
+  </g>
+</svg>

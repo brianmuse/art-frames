@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header, panel_results, advanced_row with context %}
+{# Guided setup of one TV (web.tv_setup): find and name it, pair it, then choose what it shows. #}
+{% block title %}Set up · {{ cfg.tv_name }}{% endblock %}
+{% set crumbs = [('Home', url_for('dashboard', tv=None)), ('Set up ' ~ cfg.tv_name, none)] %}
+{% set steps = [('find', 'Find the TV'), ('pair', 'Pair'), ('done', 'Choose what it shows')] %}
+{% set at = (steps | map(attribute=0) | list).index(step) %}
+{% block content %}
+{{ page_header('Set up ' ~ cfg.tv_name, 'Three steps. Keep the TV on while you set it up.') }}
+<ol class="setup-steps">{% for key, label in steps %}<li class="{{ 'done' if loop.index0 < at else 'current' if loop.index0 == at else '' }}"{% if loop.index0 == at %} aria-current="step"{% endif %}><span class="setup-number">{% if loop.index0 < at %}{{ icon('check') }}{% else %}{{ loop.index }}{% endif %}</span>{{ label }}</li>{% endfor %}</ol>
+<section class="card settings-panel setup-card" id="setup">
+{% if step == 'find' %}
+  <div class="card-header"><h2 class="card-title">Find the TV</h2><p class="card-description">Art Frames looks for TVs on your network. Choose yours.</p></div>
+  {% if error %}<p role="alert" class="alert notice error card-note">{{ error }}</p>{% endif %}
+  <form method="post" action="{{ url_for('save_tv_setup') }}" class="stack" data-setup><input type="hidden" name="csrf" value="{{ csrf }}">
+    {% include '_tv_discovery.html' %}
+    <label>Name<input name="tv_name" value="{{ values.tv_name }}" required maxlength="60"{% if not cfg.tv.ip %} data-default-name="{{ cfg.tv_name }}"{% endif %}><small>Find TVs fills in the name the TV reports.</small></label>
+    {% call advanced_row('setup-address', open=error != '' or (values.tv_ip and not discovery_autostart), label='Enter the address yourself') %}
+    <label>IP address<input name="tv_ip" value="{{ values.tv_ip }}" placeholder="192.168.1.50"></label>
+    <label>MAC address<input name="tv_mac" value="{{ values.tv_mac }}" placeholder="AA:BB:CC:DD:EE:FF"><small>Needed to turn the TV on at a set time.</small></label>
+    {% endcall %}
+    <div class="card-footer"><button class="button" type="submit">Next</button></div>
+  </form>
+{% elif step == 'pair' %}
+  <div class="card-header"><h2 class="card-title">Pair {{ cfg.tv_name }}</h2><p class="card-description">Select Pair. Then select Allow on the TV within 30 seconds.</p></div>
+  {{ panel_results('setup') }}
+  <dl class="display-details"><div><dt>Address</dt><dd>{{ cfg.tv.ip }}</dd></div></dl>
+  <form method="post" action="{{ url_for('setup_pair') }}" class="card-footer"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <button class="button" type="submit">{% if job_note and job_note.place == 'setup' and job_note.category == 'error' %}Try again{% else %}Pair{% endif %}</button>
+    <a class="button outline" href="{{ url_for('tv_setup', step='find') }}">Change the address</a>
+  </form>
+{% else %}
+  <div class="card-header"><h2 class="card-title">{{ cfg.tv_name }} is paired</h2><p class="card-description">{% if has_apps %}Next, choose what it shows. A plan sets the schedule for you.{% else %}It shows the starter website. Install layouts to choose what it shows.{% endif %}</p></div>
+  {{ panel_results('setup') }}
+  <div class="card-footer">{% if has_apps %}<a class="button" href="{{ url_for('tv_plans', **{'from': 'setup'}) }}">Choose what it shows</a>{% endif %}<a class="button outline" href="{{ url_for('tv_overview') }}">Open {{ cfg.tv_name }}</a></div>
+{% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{% block title %}Art Frames{% endblock %} · Art Frames</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" sizes="16x16 32x32 48x48">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='apple-touch-icon.png') }}">
+  <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  {% from '_ui.html' import icon %}
+  <div class="app-shell">
+  {% include '_sidebar.html' %}
+  <div class="sheet-overlay sidebar-overlay" data-sidebar-overlay hidden></div>
+  <div class="app-main">
+  <header class="topbar">
+    <a class="button ghost icon sm sidebar-trigger" href="#sidebar" data-sidebar-toggle aria-controls="sidebar">{{ icon('menu') }}<span class="sr-only">Open menu</span></a>
+    <nav class="breadcrumb" aria-label="Breadcrumb"><ol>{% for label, url in (crumbs if crumbs is defined else [(self.title(), none)]) %}<li>{% if not loop.first %}{{ icon('chevron') }}{% endif %}{% if url and not loop.last %}<a href="{{ url }}">{{ label }}</a>{% else %}<span {% if loop.last %}aria-current="page"{% endif %}>{{ label }}</span>{% endif %}</li>{% endfor %}</ol></nav>
+    <div class="topbar-actions"><a class="button outline sm activity-button" href="{{ url_for('activity') }}" data-activity-toggle aria-controls="activity-drawer">{{ icon('activity') }}Activity<span class="badge activity-count" data-activity-count aria-hidden="true" {% if not activity_count %}hidden{% endif %}>{{ activity_count }}</span><span class="sr-only" data-activity-count-text>{% if activity_count %}: {{ activity_count }} running or queued{% endif %}</span></a></div>
+  </header>
+  <main id="main" {% if watch_job %}data-job="{{ watch_job.id }}" data-job-place="{{ watch_job.place }}"{% endif %} {% if job_note %}data-job-done{% endif %}>
+    {% for category, message in panel_notes('notice') %}
+    <div role="status" class="alert notice {{ category }}">{{ message }}</div>
+    {% endfor %}
+    <div role="status" aria-live="polite" data-job-notes>{% if job_note and job_note.place == 'notice' %}<div class="alert notice {{ 'neutral' if job_note.state == 'skipped' else job_note.category }}">{{ job_note.message }}</div>{% endif %}</div>
+    {% block content %}{% endblock %}
+  </main>
+  </div>
+  </div>
+  <div class="sheet-overlay" data-activity-overlay hidden></div>
+  <div class="sheet activity-drawer" id="activity-drawer" role="dialog" aria-modal="true" aria-labelledby="activity-title" aria-describedby="activity-description" tabindex="-1" hidden data-activity-drawer
+       data-url="{{ url_for('activity_json') }}" data-cancel-url="{{ url_for('cancel_job', job_id='JOB') }}" data-csrf="{{ csrf }}">
+    <div class="sheet-header">
+      <div><h2 class="sheet-title" id="activity-title">Activity</h2><p class="sheet-description" id="activity-description">What Art Frames did on your TVs, and what it is doing now.</p></div>
+      <button type="button" class="button outline sm" data-activity-close>Close</button>
+    </div>
+    <div class="sheet-content">
+      <div class="activity-filters">
+        <label>TV<select data-activity-tv><option value="">All TVs</option></select></label>
+        <div class="tabs" role="group" aria-label="Outcome"><button type="button" class="tab" data-activity-outcome="all" aria-pressed="true">All</button><button type="button" class="tab" data-activity-outcome="problems" aria-pressed="false">Problems</button></div>
+        <label class="check"><input type="checkbox" class="switch" role="switch" data-activity-schedule>Include automatic updates<span class="small" data-activity-hidden></span></label>
+      </div>
+      <p class="small" data-activity-status role="status" aria-live="polite"></p>
+      {% for key, title, empty in [('now', 'Now', 'Nothing is running. Each TV runs one command at a time.'), ('yours', 'Recent commands', 'No commands yet.'), ('schedule', 'Schedule', 'No scheduled updates to show.')] %}
+      <section class="activity-section" aria-labelledby="activity-{{ key }}" data-activity-section="{{ key }}" {% if key == 'schedule' %}hidden{% endif %}><h3 id="activity-{{ key }}">{{ title }}</h3><ul class="activity-list" data-activity-list="{{ key }}"></ul><p class="activity-empty" data-activity-empty="{{ key }}" hidden>{{ empty }}</p></section>
+      {% endfor %}
+    </div>
+    <div class="sheet-footer"><a class="button outline sm" href="{{ url_for('activity') }}">Open the activity page</a></div>
+  </div>
+</body>
+</html>

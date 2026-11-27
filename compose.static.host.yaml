@@ -1,0 +1,32 @@
+# HTML/CSS renderer plus Linux host networking for LAN Wake-on-LAN broadcasts.
+services:
+  dayframe:
+    extends:
+      file: compose.base.yaml
+      service: dayframe
+    build:
+      context: .
+      args:
+        DAYFRAME_BUNDLED_SITE: none # The website service supplies the default site.
+    network_mode: host
+    environment:
+      # Loopback only, unless DAYFRAME_LISTEN in .env opens it to the home network.
+      DAYFRAME_BIND: "${DAYFRAME_LISTEN:-127.0.0.1}"
+      DAYFRAME_DEFAULT_SITE_SOCKET: /run/dayframe-site/site.sock
+    volumes:
+      - site-ipc:/run/dayframe-site:ro
+    depends_on: [renderer, website]
+  renderer:
+    extends:
+      file: compose.base.yaml
+      service: static-renderer
+  website:
+    extends:
+      file: compose.base.yaml
+      service: website
+secrets:
+  web_password:
+    file: ./.secrets/web_password
+volumes:
+  render-ipc:
+  site-ipc:

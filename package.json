@@ -1,0 +1,14 @@
+{
+  "name": "art-frames-dev",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix website run dev",
+    "build:site": "npm --prefix website run build",
+    "deploy": ".venv/bin/python scripts/remote.py update",
+    "rollback": ".venv/bin/python scripts/remote.py rollback",
+    "logs": ".venv/bin/python scripts/remote.py logs",
+    "open": ".venv/bin/python scripts/remote.py open",
+    "lan": ".venv/bin/python scripts/remote.py lan",
+    "lan:off": ".venv/bin/python scripts/remote.py lan-off"
+  }
+}

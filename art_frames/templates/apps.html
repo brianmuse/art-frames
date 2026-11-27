@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header with context %}
+{% block title %}Layouts{% endblock %}
+{% set crumbs = [('Layouts', none)] %}
+{% block content %}
+{{ page_header('Layouts', ('Settings here apply to every TV. Each TV\'s schedule decides when a layout shows.' if rows else 'Install layouts to show more than art.')) }}
+{% if rows %}
+<ul class="app-rows">
+{% for row in rows %}
+  {% set tone = row.state.tone %}
+  <li class="card app-row tone-{{ tone }}">
+    <div class="app-row-main">
+      <div class="app-row-title"><span class="app-row-icon" aria-hidden="true">{{ icon('app') }}</span><h2><a href="{{ url_for('app_page', app_id=row.app.id) }}">{{ row.app.name }}</a></h2>
+        <span class="badge {{ 'destructive' if tone == 'failing' else 'success' if tone == 'ok' else 'outline' }} app-state">{% if tone == 'ok' %}{{ icon('check') }}{% elif tone in ('setup', 'failing') %}{{ icon('alert') }}{% endif %}{{ row.state.word }}</span></div>
+      {% if row.state.text %}<p class="small app-row-note">{{ row.state.text }}</p>{% endif %}
+      <p class="small app-row-on">{% if row.on %}Used on {% for tv in row.on %}{{ tv.name }}{% if tv.places %} ({% for place in tv.places %}{{ place }}{{ ', ' if not loop.last }}{% endfor %}){% endif %}{{ ', ' if not loop.last }}{% endfor %}{% else %}Not on any TV yet. <a href="{{ url_for('tv_schedule', _anchor='add-' ~ row.app.id) }}">Add it to {{ cfg.tv_name }}’s schedule</a>{% endif %}</p>
+      {% if row.source %}<p class="small app-row-source">From {{ row.source.text }}{% if row.source.installed %} · installed {{ row.source.installed }}{% endif %}</p>{% endif %}
+    </div>
+    {% if tone == 'setup' %}<a class="button sm app-row-action" href="{{ url_for('app_page', app_id=row.app.id, _anchor='field-' ~ row.state.missing_keys[0]) }}">Set up<span class="sr-only"> {{ row.app.name }}</span></a>
+    {% elif tone == 'failing' %}<a class="button outline sm app-row-action" href="{{ url_for('tv_health', tv=row.state.failing[0].id, _anchor='check-app-' ~ row.app.id) }}">See problem<span class="sr-only"> with {{ row.app.name }}</span></a>{% endif %}
+  </li>
+{% endfor %}
+</ul>
+{% else %}
+<div class="card empty-state apps-empty">
+  <span class="empty-state-icon" aria-hidden="true">{{ icon('app') }}</span>
+  <h2>No layouts yet</h2>
+  <p>Layouts show a calendar, news or your photos at the times you choose. Artwork shows the rest of the day. Install them from the computer you deploy from. Name the layouts repo in <code>.deploy.local.toml</code>, then run:</p>
+  <div class="copy-command"><code data-copy-source>npm run deploy</code><button class="button outline sm" type="button" data-copy hidden>Copy</button></div>
+  <p>Then reload this page. <a href="https://github.com/brianmuse/art-frames/blob/main/docs/cli-deployment.md#layouts" target="_blank" rel="noopener noreferrer">Read the install guide ↗</a></p>
+</div>
+{% endif %}
+{% endblock %}

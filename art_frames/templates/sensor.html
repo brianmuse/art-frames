@@ -1,0 +1,224 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import page_header, status_dot, card_notes, card_form, settings_card, fold_card, advanced_section, duration_select with context %}
+{% block title %}Sensor · {{ cfg.tv_name }}{% endblock %}
+{% set crumbs = [(cfg.tv_name, url_for('tv_overview')), ('Sensor', none)] %}
+{% block content %}
+{{ page_header('Sensor', 'A presence and light sensor next to ' ~ cfg.tv_name ~ '. It sets the brightness from the room light, blanks the screen when the room is empty, and turns the screen on when someone comes in.') }}
+
+{# The sensors a search found. One that needs its key asks for it in its own row. #}
+{% macro found_list() %}
+  {% if found %}
+  <ul class="sensor-results" aria-label="Found sensors">
+    {% for item in found %}
+    <li><form method="post" action="{{ url_for('sensors.connect') }}#connection" class="found-sensor"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="host" value="{{ item.host }}"><input type="hidden" name="port" value="{{ item.port }}"><input type="hidden" name="name" value="{{ item.friendly_name or item.name }}">
+      <span class="found-sensor-text"><strong>{{ item.title }}</strong><span class="small">{{ item.friendly_name or item.name }} · {{ shown_host(item.host) }}</span></span>
+      {% if is_saved(item) %}<span class="badge success">Connected</span>
+      {% else %}
+      {% if item.encrypted %}<label class="found-sensor-key">Encryption key<input name="key" type="password" autocomplete="off" spellcheck="false" required><small>This sensor needs its key: the api: encryption: key: in its ESPHome settings.</small></label>{% endif %}
+      <button class="button{% if sensor.host %} outline{% endif %} sm" type="submit">Connect</button>
+      {% endif %}
+    </form></li>
+    {% endfor %}
+  </ul>
+  {% elif found is not none %}
+  <p class="small"><a href="#connection">Enter the sensor's address</a></p>
+  {% endif %}
+{% endmacro %}
+
+{# The address and key form. Its fields; the caller draws the card around it. #}
+{% macro address_fields() %}
+  <label>Address<input name="host" value="{{ cards.connection.host }}" placeholder="192.168.1.148" required></label>
+  <label>Port<input name="port" type="number" min="1" max="65535" value="{{ cards.connection.port }}"><small>6053 for the ESPHome API.</small></label>
+  <label>Encryption key<input name="key" type="password" autocomplete="off" spellcheck="false" placeholder="{{ 'Saved. Leave empty to keep it.' if key_set else 'Only if the sensor uses one' }}"><small>The api: encryption: key: in the sensor's ESPHome settings.</small></label>
+  {% if key_set %}<label class="check"><input type="checkbox" name="remove_key">Remove the saved key</label>{% endif %}
+{% endmacro %}
+
+<div class="settings-sections">
+{% if not sensor.host %}
+{# After Remove, a restore that failed still needs to be seen. #}
+{% if samsung_text and not samsung_settled %}<p role="status" class="alert notice info card-note">{{ samsung_text }}</p>{% endif %}
+{% call fold_card('find', 'Find sensors', 'ESPHome sensors on your network', open=true, action_label='Find') %}
+  {{ card_notes('find') }}
+  <p class="small sensor-hardware">Works with ESPHome presence and light sensors, such as an mmWave sensor with a lux reading.</p>
+  <form method="post" action="{{ url_for('sensors.find') }}#find"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button" type="submit">Find sensors</button></form>
+  {{ found_list() }}
+{% endcall %}
+{% call fold_card('connection', "Enter the address instead", "Its IP address or .local name", open=(found is not none and not found) or errors.get('connection'), action_label='Enter') %}
+  {{ card_notes('connection', errors.get('connection')) }}
+  <form method="post" action="{{ url_for('sensors.connect') }}#connection" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+    {{ address_fields() }}
+    <div class="card-footer"><button class="button" type="submit">Connect</button></div>
+  </form>
+{% endcall %}
+{% else %}
+
+{# One card for sensor control: the switch, what it does now, and the readings behind it. #}
+<section class="card settings-panel" id="sensor-status" aria-labelledby="sensor-status-title" data-sensor-live data-url="{{ url_for('sensors.live_json') }}">
+  <div class="card-header card-header-switch">
+    <div><h2 class="card-title" id="sensor-status-title">Sensor control</h2><p class="card-description">{{ live.product }}{% if live.friendly_name %} · {{ live.friendly_name }}{% endif %}. Art Frames leaves the TV alone while someone watches TV.</p></div>
+    <form id="sensor-control" method="post" action="{{ url_for('sensors.switch') }}#sensor-control" class="switch-form"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="sensor_version" value="{{ sensor_version }}"><input type="hidden" name="enabled" value="{{ 'off' if sensor.enabled else 'on' }}">
+      <button class="switch-button" type="submit" role="switch" aria-checked="{{ 'true' if sensor.enabled else 'false' }}" aria-label="Sensor control" title="{{ 'Turn off sensor control' if sensor.enabled else 'Turn on sensor control' }}"><span class="switch-thumb"></span></button><span class="small">{{ 'On' if sensor.enabled else 'Off' }}</span>
+    </form>
+  </div>
+  {{ card_notes('sensor-status') }}
+  {{ card_notes('sensor-control', errors.get('sensor-control')) }}
+  <p class="live-line"><span data-sensor-field="curve">{{ live.curve }}</span> <span data-sensor-field="control">{{ live.control }}</span></p>
+  <dl class="display-details">
+    <div><dt>Status</dt><dd><span data-sensor-field="status">{{ status_dot({'word': live.check.title, 'tone': live.check.dot}) }}</span><small data-sensor-field="when">{{ live.check.when }}</small><small data-sensor-field="detail">{{ live.check.detail }}</small></dd></div>
+    <div><dt>Presence</dt><dd data-sensor-field="presence">{{ live.presence }}</dd></div>
+    <div><dt>Room light</dt><dd data-sensor-field="light">{{ live.light }}</dd></div>
+    {% if control_row not in ('On', 'Off') %}<div><dt>Now</dt><dd>{{ control_row }}</dd></div>{% endif %}
+  </dl>
+  {% if samsung_text %}<p class="small">{{ samsung_text }}</p>{% endif %}
+  {% if wake_problem %}<p role="status" class="alert notice{{ ' error' if wake_problem.tone == 'problem' }} card-note">{{ wake_problem.title }}.{% if wake_problem.detail %} {{ wake_problem.detail }}{% endif %}</p>{% endif %}
+  {% if key_error == 'key-not-used' %}
+  <form method="post" action="{{ url_for('sensors.connect') }}#sensor-status" class="card-footer"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="host" value="{{ sensor.host }}"><input type="hidden" name="port" value="{{ sensor.port }}"><input type="hidden" name="remove_key" value="on">
+    <button class="button sm" type="submit">Remove the key</button>
+  </form>
+  {% elif key_problem %}
+  <div class="card-footer"><a class="button sm" href="#connection">Enter the key</a></div>
+  {% elif suggest %}
+  {# The offer posts the points form, so typed points in Advanced are kept. #}
+  <div class="alert notice info curve-offer" id="sensor-offer" role="status"><span>You set the brightness to {{ suggest.level }} on the TV at {{ '%g' | format(suggest.lux) }} lux.{% if can_resume %} The sensor is {{ control_row | lower }}.{% endif %}</span>
+    <span class="curve-offer-actions"><button class="button sm" type="submit" form="curve-form" name="offer" value="add">Add as a point</button>{% if can_resume %}<button class="button outline sm" type="submit" form="resume-form">Resume now</button>{% endif %}<button class="button outline sm" type="submit" form="curve-offer">Keep the pause</button></span></div>
+  {% elif can_resume %}
+  <div class="card-footer"><p class="small">{{ control_note }}</p><button class="button outline sm" type="submit" form="resume-form">Resume now</button></div>
+  {% endif %}
+</section>
+<form id="resume-form" method="post" action="{{ url_for('sensors.resume') }}#sensor-status" hidden><input type="hidden" name="csrf" value="{{ csrf }}"></form>
+{# Keep the pause: forget the offer only. #}
+<form id="curve-offer" method="post" action="{{ url_for('sensors.ignore_suggestion') }}#sensor-status" hidden><input type="hidden" name="csrf" value="{{ csrf }}"></form>
+
+{# The Room card: a preset, Darker or Brighter, and what the saved settings do. On a first setup it also
+   turns sensor control on, so a new sensor takes one step. #}
+{% set first_setup = not sensor.enabled and not room_chosen %}
+{% call(part) settings_card('room', 'What kind of room is this?' if first_setup else 'Room', 'Pick the closest one. It sets the brightness, the dim, blank and TV off times and the hours. You can change each one later.' if first_setup else 'A starting point for the brightness, the dim, blank and TV off times and the hours.', url_for('sensors.save_room'), errors.get('room'), button='Turn on sensor control' if not sensor.enabled else 'Save', button_name='enable' if not sensor.enabled else none) %}
+  {% if part == 'fields' %}{# Enter in a field presses this first button: Save. It never turns sensor control on. #}<button class="sr-only" type="submit" tabindex="-1" aria-hidden="true">Save</button><input type="hidden" name="sensor_version" value="{{ sensor_version }}">
+  <fieldset class="room-choices"><legend class="sr-only">Room</legend>
+    {% for room in rooms.cards %}
+    <label class="room-card"><input type="radio" name="room" value="{{ room.key }}" {% if room.checked %}checked{% endif %}>
+      <span class="room-text"><strong>{{ room.name }}</strong><span class="small">{{ room.line }}</span>{% if room.diff %}<span class="small room-diff">{{ room.diff }}</span>{% endif %}</span>
+      <svg class="room-spark" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"><polyline points="{{ room.spark }}"/></svg>
+    </label>
+    {% endfor %}
+  </fieldset>
+  {% if rooms.stale %}
+  <p class="small room-custom">{{ rooms.stale.name }} was set before Art Frames read this TV. <button class="button link sm" type="submit" name="reset" value="{{ rooms.stale.key }}">Apply it for this TV</button></p>
+  {% elif not rooms.match and room_chosen %}
+  <p class="small room-custom">Now: <strong>Custom{% if rooms.base %} (based on {{ rooms.base.name }}){% endif %}</strong>.{% if rooms.base %} <button class="button link sm" type="submit" name="reset" value="{{ rooms.base.key }}">Reset to {{ rooms.base.name }}</button>{% endif %}</p>
+  {% endif %}
+  {% if not range_known %}<p class="small">Art Frames has not read this TV's brightness range yet, so a room uses 0 to 10. On a TV with a wider range, that is darker, never brighter.</p>{% endif %}
+  <label>Darker or brighter<select name="offset">{% for value, text in offset_choices %}<option value="{{ value }}" {% if value == cards.control.offset | int %}selected{% endif %}>{{ text }}</option>{% endfor %}</select><small>Moves every brightness a step or two, and keeps the room.</small></label>
+  <div class="what-it-does"><p class="small"><strong>What it does</strong></p><ul class="small">{% for line in what_it_does %}<li>{{ line }}</li>{% endfor %}</ul></div>
+  {% elif part == 'footer' and not sensor.enabled %}
+  <button class="button outline" type="submit" name="save_only" value="1">Save only</button>
+  {% endif %}
+{% endcall %}
+
+{% call(part) settings_card('away', 'When the room is empty or dark', 'Art Frames undoes the empty-room steps at once when someone comes back. The dark blank waits for the light.', url_for('sensors.save_away'), errors.get('away')) %}
+  {% if part == 'fields' %}<input type="hidden" name="sensor_version" value="{{ sensor_version }}">
+  <div class="control-grid">
+    <label>Dim after the room is empty<select name="away_after">{% for value, text in away_choices %}<option value="{{ value }}" {% if value == cards.away.away_after | int %}selected{% endif %}>{{ text }}</option>{% endfor %}</select><small>To the lowest brightness of the curve.</small></label>
+    <label>Blank after the room is empty<select name="blank_after">{% for value, text in blank_choices %}<option value="{{ value }}" {% if value == cards.away.blank_after | int %}selected{% endif %}>{{ text }}</option>{% endfor %}</select><small>A black image at the TV's lowest brightness.</small></label>
+    <label>Turn the TV off after the room is empty<select name="off_after">{% for value, text in off_choices %}<option value="{{ value }}" {% if value == cards.away.off_after | string %}selected{% endif %}>{{ text }}</option>{% endfor %}</select><small>The TV turns itself off about {{ sleep_after }} min later, with its own Sleep After timer. The sensor turns it back on when someone comes in, during the set hours.</small></label>
+    <label>Blank when the room is darker than<select name="dark_below">{% for value, text in dark_choices %}<option value="{{ value }}" {% if value == cards.away.dark_below | string %}selected{% endif %}>{{ text }}</option>{% endfor %}</select><small>Blanks at once, even with someone there, and stays blank until the light is at least twice this level. The artwork's glow counts: pick a level above the reading with the lights off and the artwork on.{% if here.lux_text %} Room light now: {{ here.lux_text }}.{% endif %}</small></label>
+  </div>
+  <fieldset class="control-grid hours-grid"><legend>Hours</legend>
+    <p class="small hours-lead">Turn on when someone comes in</p>
+    <label>From<input name="hours_start" type="time" value="{{ cards.away.hours_start }}" required></label>
+    <label>To<input name="hours_end" type="time" value="{{ cards.away.hours_end }}" required></label>
+  </fieldset>
+  <p class="small">Outside these hours, the TV turns off 5 minutes after the room is empty. Someone walking in does not turn it on. Use the same time twice to keep the TV ready all day.</p>
+  {% endif %}
+{% endcall %}
+
+
+{% call advanced_section() %}
+{% call fold_card('points', 'Brightness points', (cards.control.points | length) ~ ' points · room light to brightness, and the timing', open=points_open, action_label='Show', remember=true) %}
+  <section class="fold-section" id="control" aria-labelledby="control-title">
+    <h3 class="fold-section-title" id="control-title">Brightness from room light</h3>
+    <p class="small">Each point sets the brightness for one room light. Between points, the brightness changes smoothly.{% if not sensor.enabled %} Turn on sensor control first, so the TV does not change its own brightness.{% endif %}</p>
+    {{ card_notes('control', errors.get('control')) }}
+    <figure class="curve-chart">
+      <svg viewBox="-12 -8 {{ chart.width + 24 }} {{ chart.height + 28 }}" role="img" aria-label="Brightness by room light">
+        <line class="curve-axis" x1="0" y1="{{ chart.height }}" x2="{{ chart.width }}" y2="{{ chart.height }}"/>
+        {% for tick in chart.ticks %}<text class="curve-tick" x="{{ tick.x }}" y="{{ chart.height + 16 }}" text-anchor="middle">{{ tick.text }}</text>{% endfor %}
+        <polyline class="curve-line" points="{{ chart.line }}"/>
+        {% for dot in chart.dots %}<circle class="curve-dot" cx="{{ dot.x }}" cy="{{ dot.y }}" r="3.5"><title>{{ dot.text }}</title></circle>{% endfor %}
+        {% if chart.now %}<circle class="curve-now" cx="{{ chart.now.x }}" cy="{{ chart.now.y }}" r="5.5"><title>{{ chart.now.text }}</title></circle>{% endif %}
+      </svg>
+      <figcaption class="small">Room light in lux, on a log scale. Brightness {{ chart.low }} to {{ chart.high }}.{% if chart.now %} The ring shows now: {{ chart.now.text[5:] }}.{% endif %}</figcaption>
+    </figure>
+    {% call card_form('control', url_for('sensors.save_control'), 'Brightness points', 'id="curve-form"') %}
+      {# Enter in a field presses this first button: Save. #}<button class="sr-only" type="submit" tabindex="-1" aria-hidden="true">Save</button><input type="hidden" name="sensor_version" value="{{ sensor_version }}"><input type="hidden" name="count" value="{{ cards.control.points | length }}"><input type="hidden" name="offset" value="{{ cards.control.offset }}">
+      <div class="curve-here">
+        <div><strong>Add a point from the TV</strong>
+          <p class="small">{% if here.lux_text %}Set the brightness on the TV first. Art Frames reads it when you click{% if here.level is not none %} ({{ here.level }} at the last check){% endif %} and pairs it with the room light now ({{ here.lux_text }}).{% else %}Wait for a light reading from the sensor.{% endif %}</p></div>
+        <button class="button outline sm" type="submit" name="here" value="1" {% if not here.lux_text %}disabled{% endif %}>{% if here.lux_text %}Add point for {{ here.lux_text }}{% else %}Add point{% endif %}</button>
+      </div>
+      <table class="settings-table curve-table">
+        <thead><tr><th scope="col">Room light (lux)</th><th scope="col">Brightness{% if range_known %} ({{ level_range[0] }}–{{ level_range[1] }}){% endif %}</th><th scope="col"><span class="sr-only">Remove</span></th></tr></thead>
+        <tbody>
+          {% for point in cards.control.points %}
+          <tr><td><input name="lux_{{ loop.index0 }}" type="number" min="0.1" step="any" value="{{ point.lux }}" aria-label="Room light of point {{ loop.index }}"></td>
+            <td><input name="level_{{ loop.index0 }}" type="number"{% if range_known %} min="{{ level_range[0] }}" max="{{ level_range[1] }}"{% endif %} value="{{ point.level }}" aria-label="Brightness of point {{ loop.index }}"></td>
+            <td><button class="button ghost sm" type="submit" name="remove" value="{{ loop.index0 }}">Remove</button></td></tr>
+          {% endfor %}
+          {% if cards.control.points | length < max_points %}
+          <tr><td><input name="new_lux" type="number" min="0.1" step="any" value="{{ cards.control.new_lux }}" placeholder="New: lux" aria-label="Room light of a new point"></td>
+            <td><input name="new_level" type="number"{% if range_known %} min="{{ level_range[0] }}" max="{{ level_range[1] }}"{% endif %} value="{{ cards.control.new_level }}" placeholder="{% if range_known %}{{ level_range[0] }}–{{ level_range[1] }}{% else %}Number{% endif %}" aria-label="Brightness of a new point"></td><td></td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+      <p class="small">{% if cards.control.points | length < max_points %}Add a point, then Save points. {% endif %}{% if not range_known %}This TV's range shows after Art Frames reads it in Art Mode. {% endif %}Below the first point and above the last, the brightness stays the same.</p>
+      {% if not cards.control.points %}<p class="small">No points yet. Art Frames uses the TV's lowest brightness at 1 lux and its highest at 1000 lux. Pick a room above, or set the TV by hand at night and in the day and add a point each time.</p>{% endif %}
+      <p class="small">Art Frames brightens after about 30 seconds and dims after about 3 minutes, at most once a minute. With no light reading for 2 minutes, it keeps the brightness as it is.</p>
+      <div class="card-footer"><button class="button outline" type="submit">Save points</button></div>
+    {% endcall %}
+  </section>
+{% endcall %}
+{% call fold_card('advanced', 'Connection', 'Readings, address and key, find another sensor · ' ~ address_summary, open=advanced_open, action_label='Show', remember=true) %}
+  <section class="fold-section" id="readings" aria-labelledby="readings-title">
+    <h3 class="fold-section-title" id="readings-title">Readings</h3>
+    <p class="small">Which readings Art Frames uses. Automatic picks them from the sensor.</p>
+    {{ card_notes('readings', errors.get('readings')) }}
+    <form method="post" action="{{ url_for('sensors.save_readings') }}#readings" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="sensor_version" value="{{ sensor_version }}">
+      {% if not live.entities %}<p class="small">The lists fill once the sensor answers. Reload this page in a moment.</p>{% endif %}
+      <label>Presence<select name="presence_entity">
+        <option value="">Automatic{% if live.presence_id and not sensor.presence_entity %}: {{ (presence_choices | selectattr('object_id', 'equalto', live.presence_id) | first or {'label': live.presence_id}).label }}{% endif %}</option>
+        {% for item in presence_choices %}<option value="{{ item.object_id }}" {% if item.object_id == cards.readings.presence_entity %}selected{% endif %}>{{ item.label }}</option>{% endfor %}
+      </select></label>
+      <label>Room light<select name="light_entity">
+        <option value="">Automatic{% if live.light_id and not sensor.light_entity %}: {{ (light_choices | selectattr('object_id', 'equalto', live.light_id) | first or {'label': live.light_id}).label }}{% endif %}</option>
+        {% for item in light_choices %}<option value="{{ item.object_id }}" {% if item.object_id == cards.readings.light_entity %}selected{% endif %}>{{ item.label }}{% if item.unit %} ({{ item.unit }}){% endif %}</option>{% endfor %}
+      </select></label>
+      <div class="card-footer"><button class="button outline" type="submit">Save readings</button></div>
+    </form>
+  </section>
+  <section class="fold-section" id="connection" aria-labelledby="connection-title">
+    <h3 class="fold-section-title" id="connection-title">Address and key</h3>
+    <p class="small">Art Frames uses the ESPHome API{% if not key_set %}, or the web server when the API does not answer{% endif %}.{% if live.transport %} Connected through the {{ live.transport }}.{% endif %}</p>
+    {{ card_notes('connection', errors.get('connection')) }}
+    <form method="post" action="{{ url_for('sensors.connect') }}#connection" class="stack"><input type="hidden" name="csrf" value="{{ csrf }}">
+      {{ address_fields() }}
+      <div class="card-footer"><button class="button outline" type="submit">Connect</button></div>
+    </form>
+  </section>
+  <section class="fold-section" id="find" aria-labelledby="find-title">
+    <h3 class="fold-section-title" id="find-title">Find another sensor</h3>
+    {{ card_notes('find') }}
+    <form method="post" action="{{ url_for('sensors.find') }}#find"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button outline" type="submit">Find sensors</button></form>
+    {{ found_list() }}
+  </section>
+{% endcall %}
+{% endcall %}
+
+<section class="card settings-panel" id="remove-sensor" aria-labelledby="remove-sensor-title">
+  <div class="card-header"><h2 class="card-title" id="remove-sensor-title">Remove the sensor</h2><p class="card-description">Art Frames turns the TV's own light sensor and Sleep After back on, and undoes any dim or blank. It does this the next time the TV is on in Art Mode.</p></div>
+  <form method="post" action="{{ url_for('sensors.remove') }}#find" class="card-footer"><input type="hidden" name="csrf" value="{{ csrf }}">
+    <details class="confirm-delete" data-confirm><summary class="button ghost destructive">Remove sensor</summary><span class="confirm-row"><span class="confirm-text">Remove the sensor? Art Frames forgets its brightness points.</span><button class="button outline sm" type="button" data-confirm-cancel>Cancel</button><button class="button destructive sm" type="submit">Remove</button></span></details>
+  </form>
+</section>
+{% endif %}
+</div>
+{% endblock %}

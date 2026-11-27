@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header, health_row with context %}
+{% block title %}Health · {{ cfg.tv_name }}{% endblock %}
+{% set crumbs = [(cfg.tv_name, url_for('tv_overview')), ('Health', none)] %}
+{% block content %}
+{{ page_header('Health', 'Is ' ~ cfg.tv_name ~ ' OK, and what to fix.') }}
+<section class="card settings-panel health-card" id="checks" aria-labelledby="checks-title">
+  <div class="card-header"><h2 class="card-title" id="checks-title">{% if problem_count %}{{ problem_count }} problem{{ 's' if problem_count != 1 }}{% else %}All good{% endif %}</h2></div>
+  {# Problems and notes stay in view. The OK rows fold into one line, so a problem is never lost among them. #}
+  {% set shown = checks | rejectattr('tone', 'equalto', 'ok') | list %}{% set fine = checks | selectattr('tone', 'equalto', 'ok') | list %}
+  {% if shown %}<ul class="health-list">{% for check in shown %}{{ health_row(check, 'health') }}{% endfor %}</ul>{% endif %}
+  {% if fine %}<details class="health-ok" id="checks-ok">
+    <summary><span>{{ 'All ' if not shown else '' }}{{ fine | length }} check{{ 's' if fine | length != 1 }} OK</span><span class="button link sm">Show</span></summary>
+    <ul class="health-list">{% for check in fine %}{{ health_row(check, 'health') }}{% endfor %}</ul>
+  </details>{% endif %}
+</section>
+<hr class="separator health-divider">
+{# Below the separator: what the last days show. No fold: these read the stored record only. #}
+{% include '_suggested_fixes.html' %}
+{% if problems %}<section class="card settings-panel" id="recent-problems" aria-labelledby="recent-problems-title">
+  <div class="card-header"><h2 class="card-title" id="recent-problems-title">Recent problems</h2><p class="card-description">From the last {{ days }} days.</p></div>
+  <ul class="plain-list">{% for when, text in problems %}<li><span class="small">{{ when }}</span> {{ text }}</li>{% endfor %}</ul>
+</section>{% endif %}
+<div class="page-header section-header" id="charts">
+  <div class="page-header-text"><h2>How {{ cfg.tv_name }} spends its day</h2><p class="page-header-description">All times are in {{ report.timezone }}.</p></div>
+  <nav class="tabs range-picker" aria-label="Time range">{% for value in ranges %}<a class="tab" href="{{ url_for('tv_health', days=value, _anchor='charts') }}" {% if value == days %}aria-current="page"{% endif %}>{{ value }} days</a>{% endfor %}</nav>
+</div>
+{% include '_charts.html' %}
+{% endblock %}

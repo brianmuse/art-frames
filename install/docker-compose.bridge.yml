@@ -1,0 +1,15 @@
+# Docker Desktop (Mac or Windows): use the normal Docker network and publish port 8765.
+#
+# Run: docker compose -f docker-compose.yml -f docker-compose.bridge.yml up -d
+# Then open http://localhost:8765, or http://<this computer's IP>:8765 from a phone.
+#
+# On this network Art Frames cannot search for your TV, find a TV whose address changed,
+# send Wake-on-LAN or answer at art-frames.local. Type your TV's IP address in setup.
+services:
+  art-frames:
+    network_mode: bridge
+    ports:
+      - "${ART_FRAMES_PORT:-8765}:8765"
+    environment:
+      ART_FRAMES_PORT: "8765" # Inside the container. The line above picks the port on your computer.
+      ART_FRAMES_MDNS: "0"

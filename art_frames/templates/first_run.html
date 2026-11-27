@@ -1,0 +1,48 @@
+<!doctype html>
+{# First-run setup: create the household password. It opens only before a password exists (auth.py).
+   It has no page context (web.bare). #}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Set up · Art Frames</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="signin-page">
+  <main class="card signin-card">
+    <h1>Welcome to Art Frames</h1>
+    <p>Create a password for your home. Everyone who changes the TVs uses it.</p>
+    {% if error %}<p role="alert" class="alert notice error">{{ error }}</p>{% endif %}
+    <form method="post" action="{{ url_for('first_run_save') }}" class="stack">
+      <input type="hidden" name="form_token" value="{{ form_token }}">
+      {% if code_ok %}
+      <input type="hidden" name="code" value="{{ code }}">
+      <p role="status" class="alert notice success">Setup code accepted.</p>
+      {% else %}
+      <label>Setup code<input name="code" value="{{ code }}" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" placeholder="ABCDE-FGHJK" required {% if not error %}autofocus{% endif %}>
+        <small>Art Frames prints it in its log when it starts. If you can open the data folder, it is also in the file <code>setup-code</code> there.</small></label>
+      {% endif %}
+      <input type="hidden" name="username" value="art-frames" autocomplete="username">
+      <label>New password<input type="password" name="password" minlength="{{ minimum }}" autocomplete="new-password" required {% if code_ok %}autofocus{% endif %}>
+        <small>At least {{ minimum }} characters. A short sentence is easy to remember.</small></label>
+      <label>Type it again<input type="password" name="repeat" minlength="{{ minimum }}" autocomplete="new-password" required></label>
+      <button class="button" type="submit">Create password</button>
+    </form>
+    {% if not code_ok %}
+    <details class="small">
+      <summary>Where is the log?</summary>
+      <ul class="plain-list">
+        <li>Docker Compose: run <code>docker compose logs art-frames</code> in the Art Frames folder.</li>
+        <li>Docker Desktop: Containers, then art-frames, then art-frames-art-frames-1, then Logs.</li>
+        <li>Synology Container Manager: Container, then art-frames, then Log.</li>
+        <li>Unraid: Docker, then the art-frames icon, then Logs.</li>
+        <li>Portainer: Containers, then art-frames, then Logs.</li>
+      </ul>
+      <p>The container is named <code>art-frames-art-frames-1</code>.</p>
+    </details>
+    {% endif %}
+  </main>
+</body>
+</html>

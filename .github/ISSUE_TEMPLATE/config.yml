@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security problem
+    url: https://github.com/brianmuse/art-frames/security/policy
+    about: Report a vulnerability privately. Do not open a public issue.
+  - name: A layout problem or a new layout
+    url: https://github.com/brianmuse/art-frames-layouts/issues/new/choose
+    about: Layouts (morning, news, photos, weather and new ones) live in art-frames-layouts. Report layout bugs and propose new layouts there.

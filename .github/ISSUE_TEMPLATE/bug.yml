@@ -1,0 +1,44 @@
+name: Bug report
+description: Something in Art Frames does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Remove IP addresses, MAC addresses, tokens, passwords, setup codes and calendar links from everything you paste here.
+        To report a security problem, do not use this form. See the security policy.
+        A problem with one layout (morning, news, photos, weather) belongs in art-frames-layouts.
+  - type: input
+    id: version
+    attributes:
+      label: Art Frames version
+      description: The foot of the sidebar shows the version.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: Host
+      description: The computer or NAS, its operating system and how you run Art Frames.
+      placeholder: "Synology DS920+, Container Manager, install file"
+    validations:
+      required: true
+  - type: input
+    id: tv
+    attributes:
+      label: TV model
+      placeholder: "The Frame QE55LS03B, firmware 1234"
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log lines
+      description: Paste the log lines around the problem (`docker compose logs art-frames`). Remove IP addresses, MAC addresses and tokens first.
+      render: text

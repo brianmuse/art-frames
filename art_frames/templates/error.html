@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{# An error page: a title, one sentence, and a way out. web.py's error handlers fill `title` and `action`:
+   "reload" (a form open too long), "home" (a missing page) or "back" (the default). #}
+{% block title %}{{ title or "That didn't work" }}{% endblock %}
+{% set crumbs = [('Home', url_for('dashboard', tv=None)), (title or "That didn't work", none)] %}
+{% block content %}<div class="card empty-state error-page"><h1>{{ title or "That didn't work" }}</h1><p>{{ message }}</p>
+<div class="error-actions">
+{% if action == 'reload' %}<a class="button" href="{{ reload_url }}">Reload</a><a class="button outline" href="{{ url_for('dashboard', tv=None) }}">Go to Home</a>
+{% elif action == 'home' %}<a class="button" href="{{ url_for('dashboard', tv=None) }}">Go to Home</a>
+{% else %}<a class="button outline" href="{{ url_for('dashboard', tv=None) }}" data-go-back hidden>Go back</a><a class="button" href="{{ url_for('dashboard', tv=None) }}">Go to Home</a>{% endif %}
+</div></div>{% endblock %}

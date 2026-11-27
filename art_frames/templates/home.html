@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% from '_ui.html' import icon, page_header, status_dot, show_now, hold_banner, health_line with context %}
+{% block title %}Home{% endblock %}
+{% set crumbs = [('Home', none)] %}
+{% block content %}
+{% call page_header('Home', 'What each TV shows now.') %}<a class="button outline" href="{{ url_for('add_tv', tv=None) }}">{{ icon('plus') }}Add TV</a>{% endcall %}
+{% if checklist %}<section class="card settings-panel checklist" aria-labelledby="checklist-title">
+  <div class="card-header"><div class="card-title-row"><h2 class="card-title" id="checklist-title">{% if checklist.done %}Setup is done{% else %}Set up your first TV{% endif %}</h2><span class="badge outline">{{ checklist.count }} of {{ checklist.steps | length }}</span></div>
+  <p class="card-description">{% if checklist.done %}{{ cfg.tv_name }} is ready. This list goes away tomorrow.{% else %}These steps get art on your Frame. It takes about five minutes.{% endif %}</p></div>
+  <ol class="checklist-steps">
+    {% for step in checklist.steps %}<li class="{{ 'done' if step.done else 'next' if step is sameas checklist.next else '' }}">
+      <span class="checklist-mark">{% if step.done %}{{ icon('check') }}{% else %}{{ loop.index }}{% endif %}</span>
+      <span class="checklist-label">{% if step.done %}{{ step.label }}{% else %}<a href="{{ step.href }}">{{ step.label }}</a>{% endif %}</span>
+      {% if step.timezone and not step.done %}<form class="checklist-actions" method="post" action="{{ url_for('checklist_timezone') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button{{ '' if step is sameas checklist.next else ' outline' }} sm" type="submit" name="timezone" value="" data-browser-zone hidden>Use this browser's timezone</button><button class="button outline sm" type="submit" name="timezone" value="UTC">Keep UTC</button></form>
+      {% elif step is sameas checklist.next %}<a class="button sm" href="{{ step.href }}">Start</a>{% endif %}
+    </li>{% endfor %}
+  </ol>
+  {% if checklist.optional %}<p class="small checklist-optional">Optional: {% for step in checklist.optional %}{% if step.done %}{{ step.label }} {{ icon('check') }}{% else %}<a href="{{ step.href }}">{{ step.label }}</a>{% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+  <form class="card-footer" method="post" action="{{ url_for('dismiss_checklist') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="button ghost sm" type="submit">{% if checklist.done %}Hide{% else %}Hide this list{% endif %}</button></form>
+</section>{% endif %}
+<div class="gallery-grid tv-grid">{% for tile in tiles %}<article class="card art-card tv-card">
+  <a class="tv-card-link" href="{{ url_for('tv_overview', tv=tile.id) }}">
+  <div class="art-window">{% set shown = tile.now.on_tv %}{% if shown and shown.state == 'switched' and shown.app_revision %}<img src="{{ url_for('sent_image', tv=tile.id, app=shown.app_id, v=shown.app_revision) }}" alt="" loading="lazy">{% elif shown and shown.state == 'switched' %}<div class="empty-frame"><p>{{ shown.app or 'Another layout' }} is on the TV</p></div>{% elif tile.sent_revision %}<img src="{{ url_for('sent_image', tv=tile.id, v=tile.sent_revision) }}" alt="" loading="lazy">{% elif tile.status.get("paired") %}<div class="empty-frame"><p>Waiting for {{ tile.name }}. Art Frames sends a picture when the TV is on in Art Mode.</p></div>{% else %}<div class="empty-frame"><p>Nothing shown yet</p></div>{% endif %}</div>
+  <div class="art-info"><div class="screen-heading"><h2>{{ tile.name }}</h2><span class="badge outline status-badge{{ ' stale' if tile.stale else '' }}" title="{{ 'Checked ' ~ tile.checked if tile.checked else 'Not checked yet' }}">{{ status_dot(tv_state(tile.status, demo)) }}</span></div>
+  {% set now = tile.now %}
+  <dl class="display-details">
+    <div><dt>Now</dt><dd>{% if now.on_tv and now.on_tv.app %}{{ now.on_tv.app }} · {{ 'taking turns' if now.plan.rotate else 'sent ' ~ now.on_tv.sent }}{% elif now.on_tv and now.plan.app %}{{ now.plan.app.name }} · sent {{ now.on_tv.sent }}{% elif now.line.showing %}{{ now.line.showing }}{% elif tile.sent %}Sent {{ tile.sent }}{% else %}Nothing sent yet{% endif %}{% if now.artwork_hint %}<span class="small tv-hint">{{ now.artwork_hint }}</span>{% endif %}</dd></div>
+    {% if now.switch and now.switch.paused %}<div><dt>Next</dt><dd>{{ now.switch.paused }}</dd></div>
+    {% elif now.switch and now.switch.soon %}<div><dt>Next</dt><dd>Switching soon</dd></div>
+    {% elif now.switch %}<div><dt>Next</dt><dd data-countdown="{{ now.switch.at }}" data-countdown-text="{{ now.switch.app }} in {left}" data-countdown-done="Switching to {{ now.switch.app }}">{{ now.switch.app }} at {{ now.switch.time }}</dd></div>
+    {% elif now.line.next %}<div><dt>Next</dt><dd>{{ now.line.next }}</dd></div>{% endif %}
+  </dl>
+  {% if tile.badges %}<p class="tv-badges">{% for badge in tile.badges %}<span class="badge secondary">{{ badge }}</span>{% endfor %}</p>{% endif %}
+  </div></a>
+  {# An unpaired TV says so once: the health line, with the fix as a button. #}
+  {% set headline = tile.now.headline %}
+  <div class="tv-card-health">{% if headline and 'pair' in headline.fixes %}<p class="health-line tone-problem">{{ icon('alert') }}<span>{{ headline.title }}</span><a class="button{{ ' outline' if checklist else '' }} sm" href="{{ url_for('tv_setup', tv=tile.id) }}">Pair {{ tile.name }}</a></p>{% else %}{{ health_line(headline, tile.now.problems, tile.id) }}{% endif %}</div>
+  {{ hold_banner(tile.hold, tile.id, 'home', compact=true) }}
+  <div class="tv-card-actions">
+    {{ show_now(tile.show, 'home', variant='outline sm') }}
+    <a class="button ghost sm" href="{{ url_for('tv_schedule', tv=tile.id) }}">{{ icon('schedule') }}Schedule<span class="sr-only"> for {{ tile.name }}</span></a>
+  </div>
+</article>{% endfor %}</div>
+{% endblock %}

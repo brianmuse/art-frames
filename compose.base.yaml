@@ -1,0 +1,107 @@
+# Shared service settings. Run compose.yaml or compose.host.yaml, not this file alone.
+x-logging: &logging
+  driver: json-file
+  options: {max-size: "10m", max-file: "3"}
+
+services:
+  dayframe:
+    build: .
+    image: dayframe:local
+    restart: unless-stopped
+    logging: *logging
+    user: "${DAYFRAME_UID:-10001}:${DAYFRAME_GID:-10001}"
+    group_add: ["10001"] # Private renderer socket group; no host group changes.
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    environment:
+      DAYFRAME_DATA_DIR: /data
+      DAYFRAME_SITES_DIR: /sites
+      DAYFRAME_CONFIG: /config/dayframe.toml
+      DAYFRAME_PASSWORD_FILE: /run/secrets/web_password
+      DAYFRAME_PORT: "${DAYFRAME_PORT:-8765}"
+      DAYFRAME_HOSTS: "${DAYFRAME_HOSTS:-localhost,127.0.0.1,[::1]}"
+      DAYFRAME_SECURE_COOKIES: "${DAYFRAME_SECURE_COOKIES:-0}"
+      DAYFRAME_LOG_LEVEL: "${DAYFRAME_LOG_LEVEL:-INFO}"
+      DAYFRAME_RENDERER_SOCKET: /run/dayframe-renderer/render.sock
+      DAYFRAME_LAYOUT_MANIFEST: "${DAYFRAME_LAYOUT_MANIFEST:-}"
+      DAYFRAME_LAYOUT_ID: "${DAYFRAME_LAYOUT_ID:-starter}"
+      DAYFRAME_LAYOUT_ENTRY: "${DAYFRAME_LAYOUT_ENTRY:-}"
+      DAYFRAME_LAYOUT_ARTWORK: "${DAYFRAME_LAYOUT_ARTWORK:-}"
+      DAYFRAME_LAYOUT_CONFIG_ID: "${DAYFRAME_LAYOUT_CONFIG_ID:-starter}"
+      # Extra installed layouts as "<id>=<scope> ..."; sites/compose.apps.yaml mounts their sockets.
+      DAYFRAME_APPS: "${DAYFRAME_APPS:-}"
+    volumes:
+      - ./data:/data
+      - ./config.local.toml:/config/dayframe.toml:ro
+      - ./sites:/sites:ro
+      - render-ipc:/run/dayframe-renderer:ro
+    secrets:
+      - web_password
+    stop_grace_period: 30s
+
+  renderer:
+    build:
+      context: .
+      dockerfile: renderer/Dockerfile
+    image: dayframe-renderer:local
+    restart: unless-stopped
+    logging: *logging
+    init: true
+    user: "10001:10001"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+      - seccomp:./renderer/seccomp_profile.json
+    pids_limit: 256
+    mem_limit: 1024m
+    shm_size: 256m
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=256m
+    volumes:
+      - render-ipc:/run/dayframe-renderer
+
+  static-renderer:
+    build:
+      context: .
+      dockerfile: renderer/Dockerfile.static
+    image: dayframe-renderer-static:local
+    restart: unless-stopped
+    logging: *logging
+    init: true
+    user: "10001:10001"
+    network_mode: none
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    tmpfs:
+      - /tmp:rw,nosuid,nodev,size=128m
+    volumes:
+      - render-ipc:/run/dayframe-renderer
+
+  website:
+    build:
+      context: "${DAYFRAME_SITE_BUILD_CONTEXT:-.}"
+      dockerfile: "${DAYFRAME_SITE_DOCKERFILE:-Dockerfile.website}"
+    image: dayframe-website:local
+    restart: unless-stopped
+    logging: *logging
+    init: true
+    user: "10001:10001"
+    network_mode: "${DAYFRAME_SITE_NETWORK:-none}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: "${DAYFRAME_SITE_MEMORY:-256m}"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    volumes:
+      - site-ipc:/run/dayframe-site
+      - ./data/layout-settings/${DAYFRAME_LAYOUT_CONFIG_ID:-starter}:/site-config:ro
+      - ./data/layout-state/${DAYFRAME_LAYOUT_CONFIG_ID:-starter}:/site-state

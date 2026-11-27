@@ -1,0 +1,227 @@
+{# Shared UI pieces. Import with: {% from '_ui.html' import icon, page_header, status_dot, panel_results with context %} #}
+
+{# Icon: a 16 px line icon in the style of Lucide, drawn with currentColor. #}
+{% macro icon(name) %}<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+{%- if name == 'home' %}<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+{%- elif name == 'activity' %}<path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+{%- elif name == 'server' %}<rect width="20" height="8" x="2" y="2" rx="2"/><rect width="20" height="8" x="2" y="14" rx="2"/><path d="M6 6h.01M6 18h.01"/>
+{%- elif name == 'tv' %}<rect width="20" height="15" x="2" y="7" rx="2"/><path d="m17 2-5 5-5-5"/>
+{%- elif name == 'display' %}<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+{%- elif name == 'insights' %}<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9M13 17V5M8 17v-3"/>
+{%- elif name == 'settings' %}<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>
+{%- elif name == 'collection' %}<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/>
+{%- elif name == 'search' %}<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+{%- elif name == 'app' %}<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>
+{%- elif name == 'plus' %}<path d="M5 12h14M12 5v14"/>
+{%- elif name == 'menu' %}<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/>
+{%- elif name == 'chevrons' %}<path d="m7 15 5 5 5-5M7 9l5-5 5 5"/>
+{%- elif name == 'chevron' %}<path d="m9 18 6-6-6-6"/>
+{%- elif name == 'check' %}<path d="M20 6 9 17l-5-5"/>
+{%- elif name == 'docs' %}<path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+{%- elif name == 'close' %}<path d="M18 6 6 18M6 6l12 12"/>
+{%- elif name == 'power' %}<path d="M12 2v10"/><path d="M18.4 6.6a9 9 0 1 1-12.77.04"/>
+{%- elif name == 'schedule' %}<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+{%- elif name == 'household' %}<path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/>
+{%- elif name == 'pause' %}<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>
+{%- elif name == 'play' %}<path d="m6 3 14 9-14 9z"/>
+{%- elif name == 'down' %}<path d="m6 9 6 6 6-6"/>
+{%- elif name == 'health' %}<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/>
+{%- elif name == 'info' %}<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+{%- elif name == 'alert' %}<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+{%- elif name == 'sensor' %}<path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/>
+{%- elif name == 'more' %}<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>
+{%- endif %}</svg>{% endmacro %}
+
+{# StatusDot: a colored dot next to its word, never the color alone. state = tv_state(...) #}
+{% macro status_dot(state, word=true) %}<span class="status"><span class="status-dot tone-{{ state.tone }}" aria-hidden="true"></span>{% if word %}<span class="status-text">{{ state.word }}</span>{% endif %}</span>{% endmacro %}
+
+{# PageHeader: title, one-line description and the page's primary actions (the call block) on the right.
+   The breadcrumb sits in the top bar (base.html), from the page's `crumbs`. #}
+{% macro page_header(title, description='', state=none) %}
+<header class="page-header">
+  <div class="page-header-text">
+    <div class="page-header-title"><h1>{{ title }}</h1>{% if state %}<span class="badge outline">{{ status_dot(state) }}</span>{% endif %}</div>
+    {% if description %}<p class="page-header-description">{{ description }}</p>{% endif %}
+  </div>
+  {% if caller %}<div class="page-header-actions">{{ caller() }}</div>{% endif %}
+</header>
+{% endmacro %}
+
+{# A job result inside its page card (web.NOTE_PLACES: the Display page panels and the Settings recovery card). Needs the page context: import "with context". #}
+{% macro panel_results(place) %}
+{% for category, message in panel_notes(place) %}<p role="status" class="alert notice {{ category }}" data-display-result>{{ message }}</p>{% endfor %}
+{% if job_note and job_note.place == place %}<p role="status" class="alert notice {{ 'neutral' if job_note.state == 'skipped' else job_note.category }}" data-display-result tabindex="-1">{{ job_note.message }}</p>{% endif %}
+{% endmacro %}
+
+{# TimezoneField: a time zone input that finds a zone by alias (EST, pst), city, IANA name or UTC offset.
+   Without JS it is an input with a datalist. app.js [data-timezone-field] swaps the datalist for a filtered list.
+   On save the server turns a typed alias into its IANA name (timezones.normalize). #}
+{% macro timezone_field(name, value, label='Timezone', required=true, placeholder='Search: EST, Tokyo, UTC+1') %}
+<label class="timezone-field" data-timezone-field>{{ label }}
+  <input name="{{ name }}" value="{{ value }}" list="{{ name }}-zones" autocomplete="off" spellcheck="false" placeholder="{{ placeholder }}"{% if required %} required{% endif %}>
+  <datalist id="{{ name }}-zones">
+    {%- for zone in timezone_choices() %}
+    <option value="{{ zone.value }}" label="{{ zone.label }}" data-keywords="{{ zone.keywords }}"></option>
+    {%- endfor %}
+  </datalist>
+</label>
+{% endmacro %}
+
+{# CardNotes: a saved card's result ("Saved.") and its error, inside the card, near its fields.
+   place is the card id; web.panel_notes("card-<id>") holds its flashed notes. #}
+{% macro card_notes(card, error='') %}
+{% for category, message in panel_notes('card-' ~ card) %}<p role="status" class="alert notice {{ category }} card-note">{{ message }}</p>{% endfor %}
+{% if error %}<p role="alert" class="alert notice error card-note">{{ error }}</p>{% endif %}
+{% endmacro %}
+
+{# The "Unsaved" tag of a card: app.js [data-card-form] shows it once a field of the card's form changes. #}
+{% macro unsaved_tag() %}<span class="badge outline unsaved-tag" data-unsaved hidden>Unsaved</span>{% endmacro %}
+
+{# CardForm: the form of one card. It posts to the card's #anchor, so the browser returns to the card, and
+   to its error. label names the card in the unsaved-changes prompt; attrs adds attributes to the form. #}
+{% macro card_form(id, action, label, attrs='') %}
+<form method="post" action="{{ action }}#{{ id }}" class="stack" data-card-form data-card-label="{{ label }}" {{ attrs }}><input type="hidden" name="csrf" value="{{ csrf }}">
+  {{ caller() }}
+</form>
+{% endmacro %}
+
+{# SettingsCard: one card with a CardForm and its Save. Call it with a part: caller('fields'), then
+   caller('footer') for anything after Save. #}
+{% macro settings_card(id, title, description, action, error='', button='Save', label=none, button_name=none) %}
+{% set part = caller %}
+<section class="card settings-panel" id="{{ id }}" aria-labelledby="{{ id }}-title">
+  <div class="card-header"><div class="card-title-row"><h2 class="card-title" id="{{ id }}-title">{{ title }}</h2>{{ unsaved_tag() }}</div>{% if description %}<p class="card-description">{{ description }}</p>{% endif %}</div>
+  {{ card_notes(id, error) }}
+  {% call card_form(id, action, label or title) %}
+    {{ part('fields') }}
+    <div class="card-footer"><button class="button" type="submit"{% if button_name %} name="{{ button_name }}" value="on"{% endif %}>{{ button }}</button>{{ part('footer') }}</div>
+  {% endcall %}
+</section>
+{% endmacro %}
+
+{# FoldCard: a card that shows one line until it opens, such as Advanced. The body is the caller.
+   With custom=true, call it with a part: caller('summary') draws the summary, caller('body') the body.
+   open=true opens it for this request: a result, an error or a missing value inside it. app.js opens it
+   for an #anchor inside it. With remember=true, app.js keeps each viewer's open or closed choice. #}
+{% macro fold_card(id, title='', subtitle='', open=false, extra_class='', action_label='Edit', custom=false, remember=false) %}
+<details class="card settings-panel fold-card {{ extra_class }}" id="{{ id }}" {% if open %}open{% endif %}{% if remember %} data-fold-remember{% endif %}>
+  <summary class="fold-summary">{% if custom %}{{ caller('summary') }}{% else %}<span class="fold-title"><strong>{{ title }}</strong>{% if subtitle %}<span class="small">{{ subtitle }}</span>{% endif %}</span><span class="fold-actions">{{ unsaved_tag() }}<span class="button outline sm fold-edit">{{ action_label }}</span></span>{% endif %}</summary>
+  {{ caller('body') if custom else caller() }}
+</details>
+{% endmacro %}
+
+{# AdvancedSection: the page-level Advanced part, at the end of a page and above any destructive card.
+   A separator and a muted heading, then the caller's fold cards: fold_card(..., action_label='Show',
+   remember=true), each with its own id and a summary line that names what is inside. #}
+{% macro advanced_section(lead='Tools for unusual setups. Most homes never need them.') %}
+<div class="advanced-section" role="group" aria-labelledby="advanced-heading">
+  <div class="advanced-heading"><h2 id="advanced-heading">Advanced</h2><p class="small">{{ lead }}</p></div>
+  {{ caller() }}
+</div>
+{% endmacro %}
+
+{# DurationSelect: preset durations, plus a saved value that is not one. values and current are in seconds,
+   or in minutes with scale=60. #}
+{% macro duration_select(name, label, values, current, scale=1, help='') %}
+<label>{{ label }}<select name="{{ name }}">{% for value, text in choices(values, current, scale) %}<option value="{{ value }}" {% if value == current %}selected{% endif %}>{{ text }}</option>{% endfor %}</select>{% if help %}<small>{{ help }}</small>{% endif %}</label>
+{% endmacro %}
+
+{# DayToggle: seven toggle buttons backed by checkboxes named `name`. The days in `disabled` can't be picked. #}
+{% macro day_toggle(name, selected, legend='On', disabled=()) %}
+<fieldset class="day-toggle"><legend>{{ legend }}</legend><div class="days-row">{% for day in DAYS %}<label class="day"><input type="checkbox" name="{{ name }}" value="{{ loop.index0 }}" {% if loop.index0 in selected and loop.index0 not in disabled %}checked{% endif %}{% if loop.index0 in disabled %} disabled{% endif %}><span>{{ day }}</span></label>{% endfor %}</div></fieldset>
+{% endmacro %}
+
+{# ShowNow: a DropdownMenu that sends one layout to a TV now and holds it. Pick how long first, then the layout:
+   the layout buttons submit. menu = web.show_menu(); back = "home" or "schedule" or "" (the TV's Overview). #}
+{% macro show_now(menu, back='', label='Show now', variant='', preview='') %}
+{% if menu %}
+<details class="dropdown show-now" data-menu>
+  <summary class="button {{ variant }}">{{ icon('play') }}{{ label }}{{ icon('down') }}</summary>
+  <form class="dropdown-content show-now-menu" method="post" action="{{ url_for('show_app', tv=menu.tv) }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">{% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}
+    <fieldset class="show-now-hold"><legend class="dropdown-label">For how long?</legend>
+      <label class="check"><input type="radio" name="hold" value="next-change" checked>{{ menu.next }}</label>
+      <label class="check"><input type="radio" name="hold" value="hour">For 1 hour</label>
+      <label class="check"><input type="radio" name="hold" value="resumed">Until I resume</label>
+    </fieldset>
+    <hr class="dropdown-separator">
+    <p class="dropdown-label">Pick a layout</p>
+    {% for app in menu.apps %}{% if app.id in menu.setup %}<a class="dropdown-item" href="{{ url_for('app_page', app_id=app.id, tv=menu.tv, _anchor='field-' ~ menu.setup[app.id]) }}">{{ icon('app') }}<span>{{ app.name }}</span><span class="dropdown-item-note">Set up first</span></a>
+    {% else %}<button class="dropdown-item" type="submit" name="app" value="{{ app.id }}">{{ icon('app') }}<span>{{ app.name }}</span></button>{% endif %}{% endfor %}
+    {% if preview %}<hr class="dropdown-separator"><a class="dropdown-item" href="{{ preview }}" data-open-dialog="preview-dialog">{{ icon('display') }}<span>Preview first…</span></a>{% endif %}
+  </form>
+</details>
+{% endif %}
+{% endmacro %}
+
+{# HoldBanner: the schedule waits after Show now. One action: Resume schedule. #}
+{% macro hold_banner(hold, tv, back='', compact=false) %}
+{% if hold %}
+<div class="alert banner hold-banner{{ ' compact' if compact else '' }}" role="status">
+  {{ icon('pause') }}<span class="banner-text">Holding {{ hold.app }} {{ hold.until }}.{% if not compact %} The schedule waits.{% endif %}</span>
+  <form method="post" action="{{ url_for('resume_schedule', tv=tv) }}"><input type="hidden" name="csrf" value="{{ csrf }}">{% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}<button class="button outline sm" type="submit">Resume schedule</button></form>
+</div>
+{% endif %}
+{% endmacro %}
+
+{# HealthLine: the first Health problem as one link, or "All good". tv names the TV on pages for many TVs. #}
+{% macro health_line(headline, problems, tv=none) -%}
+{%- set link = url_for('tv_health', tv=tv) if tv else url_for('tv_health') -%}
+{%- if headline -%}<p class="health-line tone-problem">{{ icon('alert') }}<a href="{{ link }}#check-{{ headline.id }}">{{ headline.title }}</a>{% if problems > 1 %}<span class="small">+{{ problems - 1 }} more</span>{% endif %}</p>
+{%- else -%}<p class="health-line tone-ok">{{ icon('check') }}<a href="{{ link }}">All good</a></p>{%- endif -%}
+{%- endmacro %}
+
+{# HealthRow: one check of web.health_checks(): icon, words, time, and its fix buttons. back is where a
+   fix form returns: "health", "home" or "" (the TV's Now page). #}
+{% macro health_row(check, back='') %}
+<li class="health-row tone-{{ check.tone }}" id="check-{{ check.id }}">
+  <span class="health-icon" aria-hidden="true">{{ icon('check' if check.tone == 'ok' else 'alert' if check.tone == 'problem' else 'info') }}</span>
+  <div class="health-text">
+    <p class="health-title">{{ check.title }}</p>
+    {% if check.detail %}<p class="small">{{ check.detail }}</p>{% endif %}
+    {% if check.steps %}<ol class="small health-steps">{% for step in check.steps %}<li>{{ step }}</li>{% endfor %}</ol>{% endif %}
+    {% if check.test %}<p class="small health-test">{{ check.test }}</p>{% endif %}
+  </div>
+  {% if check.when %}<span class="small health-when">{{ check.when }}</span>{% endif %}
+  {% if check.fixes %}<div class="health-fixes">
+    {% for fix in check.fixes %}
+      {% if fix == 'pair' %}<a class="button sm" href="{{ url_for('tv_settings', _anchor='pairing') }}">Pair TV</a>
+      {% elif fix == 'connection' %}<a class="button outline sm" href="{{ url_for('tv_settings', _anchor='connection') }}">Open TV settings</a>
+      {% elif fix == 'add-artwork' %}<a class="button outline sm" href="{{ url_for('gallery') }}">Add artwork</a>
+      {% elif fix == 'artwork-on' %}<a class="button outline sm" href="{{ url_for('household', _anchor='artwork') }}">Turn it on</a>
+      {% elif fix == 'sensor' %}<a class="button outline sm" href="{{ url_for('sensors.sensor_page') }}">Open sensor settings</a>
+      {% elif fix == 'sensor-key' %}<a class="button sm" href="{{ url_for('sensors.sensor_page', _anchor='connection') }}">{{ 'Remove the key' if check.error == 'key-not-used' else 'Enter the key' }}</a>
+      {% elif fix == 'app' %}<a class="button {{ 'sm' if loop.first else 'outline sm' }}" href="{{ url_for('app_page', app_id=check.app) }}">Open {{ (installed_apps | selectattr('id', 'equalto', check.app) | first).name }} settings</a>
+      {% elif fix == 'setup' %}<a class="button sm" href="{{ url_for('app_page', app_id=check.app, _anchor='field-' ~ check.field) }}">Set up {{ (installed_apps | selectattr('id', 'equalto', check.app) | first).name }}</a>
+      {% elif fix == 'test' %}<form method="post" action="{{ url_for('preview_site') }}"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="hidden" name="app" value="{{ check.app }}">{% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}<button class="button {{ 'sm' if loop.first else 'outline sm' }}" type="submit">Test {{ (installed_apps | selectattr('id', 'equalto', check.app) | first).name }}</button></form>
+      {% elif fix == 'check' %}<form method="post" action="{{ url_for('check_tv') }}"><input type="hidden" name="csrf" value="{{ csrf }}">{% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}<button class="button outline sm" type="submit">Check TV</button></form>
+      {% elif fix == 'wake' %}<form method="post" action="{{ url_for('wake_now') }}"><input type="hidden" name="csrf" value="{{ csrf }}">{% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}<button class="button {{ 'sm' if loop.first else 'outline sm' }}" type="submit">Turn on now</button></form>
+      {% elif fix == 'docs' %}<a class="button outline sm" href="{{ check.docs }}" target="_blank" rel="noopener noreferrer">Hosting docs ↗</a>
+      {% elif fix == 'retry' %}<form method="post" action="{{ url_for('refresh') }}"><input type="hidden" name="csrf" value="{{ csrf }}">{% if back %}<input type="hidden" name="back" value="{{ back }}">{% endif %}<button class="button {{ 'sm' if loop.first else 'outline sm' }}" type="submit">Try again</button></form>
+      {% endif %}
+    {% endfor %}
+    </div>{% endif %}
+</li>
+{% endmacro %}
+
+{# AdvancedRow: a row inside a card that holds the fields people rarely change. changed counts the fields that
+   differ from their default. It opens on an error (open=true), when the address points inside it, or when
+   the viewer left it open: app.js [data-advanced-row] keeps that choice in this browser. #}
+{% macro advanced_row(id, changed=0, open=false, label='Advanced') %}
+<details class="advanced-row" id="{{ id }}" data-advanced-row {% if open %}open{% endif %}>
+  <summary><span class="advanced-label">{{ label }}</span>{% if changed %}<span class="badge outline">{{ changed }} changed</span>{% endif %}</summary>
+  <div class="stack advanced-body">{{ caller() }}</div>
+</details>
+{% endmacro %}
+
+{# PresetGroup: one choice that sets several values, with Custom last. options are (value, label, line, values).
+   The caller draws the Custom fields; they show only while Custom is chosen (CSS :has). style is cards or select.
+   app.js writes an option's values into those fields when the choice changes, so Custom starts from it. #}
+{% macro preset_group(name, legend, options, current, description='', style='cards', custom_line='Choose each value yourself.') %}
+<fieldset class="preset-group preset-style-{{ style }}" data-preset>
+  <legend class="field-label">{{ legend }}</legend>{% if description %}<p class="small field-help">{{ description }}</p>{% endif %}
+  {% if style == 'select' %}<select name="{{ name }}" aria-label="{{ legend }}">{% for value, label, line, values in options %}<option data-values='{{ values | tojson }}' value="{{ value }}" {% if value == current %}selected{% endif %}>{{ label }}</option>{% endfor %}<option value="custom" {% if current == 'custom' %}selected{% endif %}>Custom…</option></select>
+  {% else %}<div class="preset-cards">{% for value, label, line, values in options %}<label class="preset-card"><input type="radio" data-values='{{ values | tojson }}' name="{{ name }}" value="{{ value }}" {% if value == current %}checked{% endif %}><span><strong>{{ label }}</strong>{% if line %}<span class="small">{{ line }}</span>{% endif %}</span></label>{% endfor %}<label class="preset-card"><input type="radio" name="{{ name }}" value="custom" {% if current == 'custom' %}checked{% endif %}><span><strong>Custom…</strong><span class="small">{{ custom_line }}</span></span></label></div>{% endif %}
+  <div class="preset-custom stack">{{ caller() }}</div>
+</fieldset>
+{% endmacro %}

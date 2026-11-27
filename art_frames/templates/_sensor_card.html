@@ -1,0 +1,11 @@
+{# The Sensor card on TV settings. The Sensor page (sensor.html) holds the settings. #}
+{% from '_ui.html' import status_dot %}
+{% set check = sensor_summary() %}
+<section class="card settings-panel" id="sensor" aria-labelledby="sensor-title">
+  <div class="card-header"><h2 class="card-title" id="sensor-title">Sensor</h2><p class="card-description">A presence and light sensor can set the brightness and dim the TV when no one is there.</p></div>
+  {% if check %}<dl class="display-details">
+    <div><dt>Status</dt><dd>{{ status_dot({'word': check.title, 'tone': check.dot}) }}{% if check.when %}<small>{{ check.when }}</small>{% endif %}{% if check.detail %}<small>{{ check.detail }}</small>{% endif %}</dd></div>
+    <div><dt>Sensor control</dt><dd>{{ 'On' if check.enabled else 'Off' }}</dd></div>
+  </dl>{% endif %}
+  <div class="card-footer"><a class="button outline" href="{{ url_for('sensors.sensor_page') }}">{{ 'Open sensor settings' if check else 'Set up a sensor' }}</a></div>
+</section>

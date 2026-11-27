@@ -1,0 +1,13 @@
+{
+  "name": "art-frames-hero-room",
+  "private": true,
+  "description": "Builds the 3D bedroom at the start of the website hero into ../vendor/hero-room.js.",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild room.js --bundle --format=esm --minify --target=es2020 --legal-comments=eof --outfile=../vendor/hero-room.js"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12",
+    "three": "0.187.0"
+  }
+}

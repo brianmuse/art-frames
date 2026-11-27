@@ -1,0 +1,25 @@
+# Copy to .deploy.local.toml. This is local host metadata, never a password.
+host = "192.0.2.10"
+user = "your-user"
+port = 22
+# A dedicated application directory inside an existing share. Must end in /dayframe.
+path = "/volume1/docker/dayframe"
+compose = "compose.yaml" # Browser: compose[.host].yaml; HTML/CSS: compose.static[.host].yaml.
+rsync_path = "rsync" # For Synology, use /usr/bin/rsync over the existing SSH connection.
+
+# Optional: install layouts. Paths are relative to this repo. Omit [app] to keep the installed layouts.
+# Every layout in the layouts repo's catalog.json installs; its default is the first layout.
+# [app]
+# local_repo = "../art-frames-layouts"
+# Or fetch it: repo = "brianmuse/art-frames-layouts" and ref = "main".
+# layout = "morning"   # Optional: another catalog layout as the first layout.
+# skip = ["news"]      # Optional: leave these layouts out.
+#
+# Optional: add every layout from another catalog. Repeat for each source.
+# Layouts run only with a compose.static profile. A browser profile installs no layouts.
+# [[sources]]
+# path = "../my-layouts"     # A folder takes no ref. In a Git repo, only committed files install.
+# [[sources]]
+# git = "https://github.com/you/dayframe-apps.git"   # Or ssh://... or git@host:owner/repo.git
+# ref = "v1.2.0"             # Required. For a source you don't own, use a tag or full commit.
+# skip = ["draft-layout"]
