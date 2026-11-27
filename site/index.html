@@ -454,7 +454,7 @@
         <div class="story" data-story aria-hidden="true">
           <svg class="leaders" aria-hidden="true"><path data-leader="0"/><path data-leader="1"/><path data-leader="2"/></svg>
           <div class="callout" data-callout="0" data-anchor="calendar"><i class="dot"></i><p><small>7:00 AM &middot; Morning layout</small><span class="long">Your calendar and the weather, over the art.</span><span class="short">Calendar and weather, over the art.</span></p></div>
-          <div class="callout" data-callout="2" data-anchor="sensor"><i class="dot"></i><p><small>External sensor support</small><span class="long">A frame over the TV hides its built-in light sensor. Add a small room sensor, and it sets the brightness and wakes the screen when you walk in.</span><span class="short">Frame covers the TV's sensor? A room sensor sets the brightness and wakes the screen.</span></p></div>
+          <div class="callout" data-callout="2" data-anchor="sensor"><i class="dot"></i><p><small>External sensor support</small><span class="long">A frame over the TV hides its own sensors. Art Frames works with off-the-shelf presence sensors, such as Apollo and Everything Presence, to set the brightness and wake the screen when you walk in.</span><span class="short">A frame hides the TV’s sensors. Art Frames works with off-the-shelf presence sensors instead.</span></p></div>
           <div class="callout" data-callout="1" data-anchor="art"><i class="dot"></i><p><small>9:00 AM &middot; Art Mode</small><span class="long">On schedule, the layout steps aside. Just the art.</span><span class="short">On schedule, back to just the art.</span></p></div>
         </div>
       </div>
@@ -793,7 +793,7 @@ Do not forward ports on my router, and do not change other containers.</pre>
       if (narrow) {
         // Phones: the box sits just under the TV (or above the sensor), with a straight line down.
         x = fit(a.x - w / 2);
-        if (el.dataset.anchor === 'sensor') { y = a.y + 30; d = `M${a.x} ${a.y}V${y}`; origin = 'center top'; } // over the credenza, clear of the TV
+        if (el.dataset.anchor === 'sensor') { y = a.y - 30 - h; d = `M${a.x} ${a.y}V${y + h}`; origin = 'center bottom'; } // on the wall above the sensor, so the stage edge never cuts it
         else { y = r.bottom + gap; d = `M${a.x} ${a.y}V${y}`; origin = 'center top'; }
       } else if (el.dataset.anchor === 'calendar') {
         // To the right of the frame, level with the dot: one straight line out.
