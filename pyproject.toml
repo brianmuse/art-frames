@@ -13,7 +13,7 @@ dependencies = [
 [dependency-groups]
 dev = ["pytest>=8,<10", "ruff>=0.12,<1"]
 renderer = ["playwright==1.64.1"]
-static-renderer = ["weasyprint==70.0", "pypdfium2==5.14.0"]
+static-renderer = ["weasyprint==70.0", "pypdfium2==5.15.2"]
 
 [project.scripts]
 art-frames = "art_frames.__main__:main"
