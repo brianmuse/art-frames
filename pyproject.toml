@@ -12,7 +12,7 @@ dependencies = [
 
 [dependency-groups]
 dev = ["pytest>=8,<10", "ruff>=0.12,<1"]
-renderer = ["playwright==1.64.1"]
+renderer = ["playwright==1.65.2"]
 static-renderer = ["weasyprint==70.0", "pypdfium2==5.14.0"]
 
 [project.scripts]
